@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GraphQL Query Complexity Analyzer</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0b1021; --panel:#11182d; --accent:#f472b6; --text:#e5e7eb; --muted:#94a3b8; }
+    body { margin:0; font-family:'Inter',system-ui; background:radial-gradient(circle at 10% 10%,#1f1435,#0b1021 45%); color:var(--text); min-height:100vh; }
+    header { padding:22px 30px; border-bottom:1px solid #1f2937; display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    h1 { margin:0; font-size:clamp(24px,4vw,32px); letter-spacing:-0.02em; }
+    main { padding:22px 30px 40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
+    .card { background:linear-gradient(160deg,rgba(255,255,255,0.04),rgba(0,0,0,0.35)); border:1px solid #1f2937; border-radius:14px; padding:16px; box-shadow:0 16px 40px rgba(0,0,0,0.35); }
+    label { display:block; margin:8px 0 6px; font-weight:600; color:var(--muted); }
+    textarea, select { width:100%; background:#0b1224; border:1px solid #1f2937; border-radius:12px; padding:12px; color:var(--text); resize:vertical; min-height:180px; box-sizing:border-box; }
+    button { margin-top:12px; background:linear-gradient(90deg,#f472b6,#a855f7); border:none; color:#fff; padding:12px 16px; border-radius:12px; font-weight:700; cursor:pointer; width:100%; box-shadow:0 16px 36px rgba(168,85,247,0.35); }
+    pre { background:#0b1224; border:1px solid #1f2937; border-radius:12px; padding:12px; white-space:pre-wrap; word-break:break-word; min-height:140px; margin:0; }
+    .badge { display:inline-flex; padding:6px 10px; border-radius:10px; border:1px solid #1f2937; margin:4px 6px 4px 0; font-size:12px; }
+    .score { font-size:32px; font-weight:800; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>GraphQL Query Complexity Analyzer</h1>
+      <p style="margin:6px 0 0; color:var(--muted);">Estimate cost, highlight deep nesting, and flag unbounded lists before shipping.</p>
+    </div>
+    <div class="badge">Offline · Static</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <label for="query">Paste a GraphQL query</label>
+      <textarea id="query" spellcheck="false">query Catalog {
+  products(first: 20) {
+    edges {
+      node {
+        id
+        name
+        price
+        variants {
+          id
+          sku
+        }
+      }
+    }
+  }
+}</textarea>
+      <button onclick="analyze()">Analyze</button>
+    </section>
+
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="color:var(--muted);font-weight:600;">Estimated complexity</div>
+          <div class="score" id="score">0</div>
+        </div>
+        <div id="risk" class="badge">Waiting…</div>
+      </div>
+      <pre id="details"></pre>
+    </section>
+  </main>
+
+  <script>
+    function analyze() {
+      const text = document.getElementById('query').value;
+      const lines = text.split(/\n/);
+      let depth = 0, maxDepth = 0, fields = 0, lists = 0;
+      lines.forEach(line => {
+        const open = (line.match(/\{/g) || []).length;
+        const close = (line.match(/\}/g) || []).length;
+        depth += open - close;
+        maxDepth = Math.max(maxDepth, depth);
+        const stripped = line.trim();
+        if (/\b(first|last|limit)\s*:\s*\d+/i.test(stripped)) lists += 1;
+        if (/^[A-Za-z0-9_]+/.test(stripped) && stripped.includes(':') === false && stripped.includes('{') === false) fields += 1;
+      });
+      const estimated = fields * (1 + maxDepth * 0.6) + lists * 8;
+      const score = Math.round(estimated * 10) / 10;
+      const risk = score > 80 ? 'High' : score > 40 ? 'Medium' : 'Low';
+
+      const suggestions = [];
+      if (maxDepth > 4) suggestions.push(`Depth ${maxDepth}: consider flattening or batching.`);
+      if (lists > 0) suggestions.push(`${lists} list argument(s) detected: ensure limits & pagination.`);
+      if (fields > 40) suggestions.push(`High field count (${fields}): trim the selection set.`);
+      if (!suggestions.length) suggestions.push('Looks good! Still enforce server-side limits.');
+
+      document.getElementById('score').textContent = score;
+      document.getElementById('risk').textContent = `${risk} risk`;
+      document.getElementById('details').textContent = [
+        `Fields: ${fields}`,
+        `Max depth: ${maxDepth}`,
+        `List args: ${lists}`,
+        '',
+        'Notes:',
+        ...suggestions.map(s => `• ${s}`)
+      ].join('\n');
+    }
+
+    analyze();
+  </script>
+</body>
+</html>

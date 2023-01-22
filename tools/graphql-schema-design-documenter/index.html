@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GraphQL Schema Design Documenter</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0c1326; --panel:#121b30; --text:#e5e7eb; --muted:#94a3b8; --accent:#22d3ee; }
+    body { margin:0; font-family:'Inter',system-ui; background:linear-gradient(135deg,#0c1326 20%,#0f172a 60%); color:var(--text); min-height:100vh; }
+    header { padding:22px 30px; border-bottom:1px solid #1f2937; display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    h1 { margin:0; font-size:clamp(24px,4vw,32px); }
+    main { padding:22px 30px 40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; }
+    .card { background:rgba(255,255,255,0.03); border:1px solid #1f2937; border-radius:14px; padding:16px; box-shadow:0 14px 32px rgba(0,0,0,0.28); }
+    label { display:block; margin:8px 0 6px; font-weight:600; color:var(--muted); }
+    textarea { width:100%; min-height:220px; background:#0b1224; border:1px solid #1f2937; color:var(--text); border-radius:12px; padding:12px; box-sizing:border-box; }
+    button { margin-top:12px; width:100%; padding:12px; border:none; border-radius:12px; background:linear-gradient(90deg,#22d3ee,#0ea5e9); color:#0b1224; font-weight:800; cursor:pointer; }
+    pre { background:#0b1224; border:1px solid #1f2937; border-radius:12px; padding:12px; white-space:pre-wrap; min-height:160px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>GraphQL Schema Design Documenter</h1>
+      <p style="margin:6px 0 0;color:var(--muted);">Turn SDL into a short design brief with type counts and entrypoints.</p>
+    </div>
+    <div style="padding:8px 12px;border:1px solid #1f2937;border-radius:10px;">Offline · Static</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <label for="schema">Schema SDL</label>
+      <textarea id="schema" spellcheck="false">schema { query: Query }
+
+type Query {
+  me: User
+  products: [Product!]
+}
+
+type User { id: ID! name: String! email: String! }
+type Product { id: ID! name: String! price: Float! owner: User }</textarea>
+      <button onclick="documenter()">Document</button>
+    </section>
+    <section class="card">
+      <h2 style="margin-top:0;">Design notes</h2>
+      <pre id="notes"></pre>
+    </section>
+  </main>
+
+  <script>
+    function documenter() {
+      const text = document.getElementById('schema').value;
+      const types = (text.match(/\btype\s+/g) || []).length;
+      const enums = (text.match(/\benum\s+/g) || []).length;
+      const inputs = (text.match(/\binput\s+/g) || []).length;
+      const queries = (text.match(/type\s+Query[\s\S]*?\{/i) ? (text.match(/type\s+Query[\s\S]*?\{([\s\S]*?)\}/i)[1].trim().split(/\n/).filter(Boolean).length : 0);
+      const mutations = (text.match(/type\s+Mutation[\s\S]*?\{/i) ? (text.match(/type\s+Mutation[\s\S]*?\{([\s\S]*?)\}/i)[1].trim().split(/\n/).filter(Boolean).length : 0);
+      const lines = [
+        `Types: ${types}`,
+        `Enums: ${enums}`,
+        `Inputs: ${inputs}`,
+        `Query fields: ${queries}`,
+        `Mutation fields: ${mutations}`,
+        '',
+        'Checks:',
+        mutations === 0 ? '• No mutations defined; API may be read-only.' : '• Mutations present. Ensure auth on write paths.',
+        queries > 10 ? '• Consider pagination and limits on Query fields.' : '• Query surface looks concise.',
+        types > 25 ? '• Large schema; consider modularization.' : '• Schema size is manageable.'
+      ];
+      document.getElementById('notes').textContent = lines.join('\n');
+    }
+    documenter();
+  </script>
+</body>
+</html>

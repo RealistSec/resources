@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secrets Rotation Schedule Generator</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0c1326; --panel:#121b30; --text:#e5e7eb; --muted:#94a3b8; --accent:#f472b6; }
+    body { margin:0; font-family:'Inter',system-ui; background:linear-gradient(135deg,#0c1326 20%,#10172a 60%); color:var(--text); min-height:100vh; }
+    header { padding:22px 30px; border-bottom:1px solid #1f2937; display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    h1 { margin:0; font-size:clamp(24px,4vw,32px); }
+    main { padding:22px 30px 40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; }
+    .card { background:rgba(255,255,255,0.03); border:1px solid #1f2937; border-radius:14px; padding:16px; box-shadow:0 14px 32px rgba(0,0,0,0.3); }
+    label { display:block; margin:8px 0 6px; font-weight:600; color:var(--muted); }
+    select, input { width:100%; padding:12px; border-radius:12px; border:1px solid #1f2937; background:#0b1224; color:var(--text); box-sizing:border-box; }
+    button { margin-top:12px; width:100%; padding:12px; border:none; border-radius:12px; background:linear-gradient(90deg,#f472b6,#8b5cf6); color:#0b1224; font-weight:800; cursor:pointer; }
+    ul { padding-left:18px; margin:0; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Secrets Rotation Schedule Generator</h1>
+      <p style="margin:6px 0 0;color:var(--muted);">Create rotation cadence and overlap windows for different secret types.</p>
+    </div>
+    <div style="padding:8px 12px;border:1px solid #1f2937;border-radius:10px;">Offline · Static</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <label for="type">Secret type</label>
+      <select id="type">
+        <option value="API key">API key</option>
+        <option value="DB password">DB password</option>
+        <option value="TLS cert">TLS certificate</option>
+      </select>
+      <label for="env">Environment</label>
+      <select id="env">
+        <option>production</option>
+        <option>staging</option>
+        <option>development</option>
+      </select>
+      <label for="overlap">Overlap days (dual validity)</label>
+      <input id="overlap" type="number" value="3" />
+      <button onclick="generate()">Generate schedule</button>
+    </section>
+    <section class="card">
+      <h2 style="margin-top:0;">Schedule</h2>
+      <ul id="list"></ul>
+    </section>
+  </main>
+
+  <script>
+    const cadences = { 'API key': 30, 'DB password': 60, 'TLS cert': 90 };
+    function generate() {
+      const type = document.getElementById('type').value;
+      const env = document.getElementById('env').value;
+      const overlap = Number(document.getElementById('overlap').value) || 0;
+      const cadence = cadences[type] || 30;
+      const steps = [
+        `Rotate every ${cadence} days (${type}).`,
+        `Start overlap ${overlap} day(s) before cutover.`,
+        `Keep previous secret valid during overlap for rollback.`,
+        `After cutover, revoke old secret after ${overlap} day(s).`,
+        `Environment: ${env}.`];
+      document.getElementById('list').innerHTML = steps.map(s => `<li>${s}</li>`).join('');
+    }
+    generate();
+  </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Raw HTTP Security Header Analyzer</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0b0f1a; --panel:#10192b; --text:#e2e8f0; --muted:#94a3b8; --accent:#f59e0b; }
+    body { margin:0; font-family:'Inter',system-ui; background:linear-gradient(135deg,#0b0f1a 20%,#111827 60%); color:var(--text); min-height:100vh; }
+    header { padding:22px 30px; border-bottom:1px solid #1f2937; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    h1 { margin:0; font-size:clamp(24px,4vw,32px); letter-spacing:-0.02em; }
+    main { padding:22px 30px 40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; }
+    .card { background:rgba(255,255,255,0.03); border:1px solid #1f2937; border-radius:14px; padding:16px; box-shadow:0 14px 32px rgba(0,0,0,0.28); }
+    label { display:block; margin:8px 0 6px; font-weight:600; color:var(--muted); }
+    textarea { width:100%; min-height:200px; background:#0b1224; border:1px solid #1f2937; color:var(--text); border-radius:12px; padding:12px; box-sizing:border-box; }
+    button { margin-top:12px; width:100%; padding:12px; border:none; border-radius:12px; background:linear-gradient(90deg,#f59e0b,#eab308); color:#111; font-weight:800; cursor:pointer; }
+    ul { padding-left:18px; margin:0; }
+    .ok { color:#22c55e; font-weight:700; }
+    .warn { color:#f97316; font-weight:700; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Raw HTTP Security Header Analyzer</h1>
+      <p style="margin:6px 0 0;color:var(--muted);">Check essential security headers in one glance.</p>
+    </div>
+    <div style="padding:8px 12px;border:1px solid #1f2937;border-radius:10px;">Offline · Static</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <label for="headers">Response headers</label>
+      <textarea id="headers" spellcheck="false">HTTP/2 200
+Content-Security-Policy: default-src 'self'
+X-Frame-Options: SAMEORIGIN
+X-Content-Type-Options: nosniff
+Referrer-Policy: no-referrer
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload</textarea>
+      <button onclick="analyze()">Analyze</button>
+    </section>
+
+    <section class="card">
+      <h2 style="margin-top:0;">Findings</h2>
+      <ul id="findings"></ul>
+    </section>
+  </main>
+
+  <script>
+    const expectations = {
+      'content-security-policy': 'Define default-src and restrict remote code.',
+      'x-frame-options': 'Prevent clickjacking (DENY or SAMEORIGIN).',
+      'x-content-type-options': 'Use nosniff to block MIME confusion.',
+      'referrer-policy': 'Control referrer leakage.',
+      'strict-transport-security': 'Force HTTPS for the site.',
+      'permissions-policy': 'Disable unneeded browser features.'
+    };
+
+    function parse(raw) {
+      return raw.split(/\n/).reduce((acc, line) => {
+        const idx = line.indexOf(':');
+        if (idx === -1) return acc;
+        const key = line.slice(0, idx).trim().toLowerCase();
+        const val = line.slice(idx + 1).trim();
+        acc[key] = val;
+        return acc;
+      }, {});
+    }
+
+    function analyze() {
+      const headers = parse(document.getElementById('headers').value);
+      const rows = [];
+      Object.entries(expectations).forEach(([key, note]) => {
+        if (headers[key]) {
+          rows.push(`<li><span class="ok">✔</span> ${key}: ${headers[key]}</li>`);
+        } else {
+          rows.push(`<li><span class="warn">⚠</span> Missing ${key}. ${note}</li>`);
+        }
+      });
+      if (!headers['strict-transport-security']) {
+        rows.push('<li><span class="warn">⚠</span> Enable HSTS on HTTPS responses only.</li>');
+      }
+      document.getElementById('findings').innerHTML = rows.join('');
+    }
+
+    analyze();
+  </script>
+</body>
+</html>

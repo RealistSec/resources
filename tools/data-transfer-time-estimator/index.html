@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data Transfer Time Estimator</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0d111f; --panel:#11182c; --accent:#60a5fa; --text:#e5e7eb; --muted:#94a3b8; }
+    body { margin:0; font-family:'Inter',system-ui; background:radial-gradient(circle at 15% 20%,#1a243d,#0d111f 55%); color:var(--text); min-height:100vh; }
+    header { padding:22px 30px; border-bottom:1px solid #1f2937; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    h1 { margin:0; font-size:clamp(24px,4vw,32px); }
+    main { padding:22px 30px 40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; }
+    .card { background:rgba(255,255,255,0.03); border:1px solid #1f2937; border-radius:14px; padding:16px; box-shadow:0 14px 34px rgba(0,0,0,0.3); }
+    label { display:block; margin:8px 0 6px; font-weight:600; color:var(--muted); }
+    input, select { width:100%; padding:12px; border-radius:12px; border:1px solid #1f2937; background:#0b1224; color:var(--text); box-sizing:border-box; }
+    button { margin-top:12px; width:100%; padding:12px; border:none; border-radius:12px; background:linear-gradient(90deg,#60a5fa,#6366f1); color:#fff; font-weight:700; cursor:pointer; }
+    .result { font-size:28px; font-weight:800; margin:10px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Data Transfer Time Estimator</h1>
+      <p style="margin:6px 0 0;color:var(--muted);">Predict how long a file upload/download will take for common link speeds.</p>
+    </div>
+    <div style="border:1px solid #1f2937; padding:8px 12px; border-radius:10px;">Offline · Static</div>
+  </header>
+  <main>
+    <section class="card">
+      <label for="size">Payload size (MB)</label>
+      <input id="size" type="number" min="0" step="0.1" value="500" />
+
+      <label for="connection">Connection</label>
+      <select id="connection">
+        <option value="5">3G Fast (5 Mbps)</option>
+        <option value="20">4G (20 Mbps)</option>
+        <option value="100" selected>Wi‑Fi / Cable (100 Mbps)</option>
+        <option value="1000">Fiber (1 Gbps)</option>
+      </select>
+
+      <label for="overhead">Protocol overhead (%)</label>
+      <input id="overhead" type="number" min="0" max="50" value="10" />
+
+      <button onclick="estimate()">Estimate</button>
+    </section>
+    <section class="card">
+      <div class="result" id="eta">—</div>
+      <p id="detail" style="margin:0;color:var(--muted);"></p>
+    </section>
+  </main>
+  <script>
+    function humanTime(seconds) {
+      if (seconds < 60) return `${seconds.toFixed(1)} seconds`;
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      if (m < 60) return `${m} min ${s.toFixed(0)} s`;
+      const h = Math.floor(m / 60);
+      const rm = m % 60;
+      return `${h} h ${rm} m`;
+    }
+    function estimate() {
+      const sizeMb = Number(document.getElementById('size').value) || 0;
+      const mbps = Number(document.getElementById('connection').value) || 1;
+      const overhead = Number(document.getElementById('overhead').value) || 0;
+      const effectiveMbps = mbps * (1 - overhead / 100);
+      const seconds = (sizeMb * 8) / Math.max(effectiveMbps, 0.1);
+      document.getElementById('eta').textContent = humanTime(seconds);
+      document.getElementById('detail').textContent = `Size: ${sizeMb} MB · Throughput: ${effectiveMbps.toFixed(2)} Mbps (after ${overhead}% overhead)`;
+    }
+    estimate();
+  </script>
+</body>
+</html>

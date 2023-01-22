@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rate Limiting Visualizer</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0b1224; --panel:#111a2f; --text:#e5e7eb; --muted:#94a3b8; --accent:#22d3ee; }
+    body { margin:0; font-family:'Inter',system-ui; background:linear-gradient(135deg,#0b1224 15%,#0f172a 60%); color:var(--text); min-height:100vh; }
+    header { padding:22px 30px; border-bottom:1px solid #1f2937; display:flex; justify-content:space-between; gap:12px; align-items:center; }
+    h1 { margin:0; font-size:clamp(24px,4vw,32px); }
+    main { padding:22px 30px 40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; }
+    .card { background:rgba(255,255,255,0.03); border:1px solid #1f2937; border-radius:14px; padding:16px; box-shadow:0 14px 32px rgba(0,0,0,0.3); }
+    label { display:block; margin:8px 0 6px; font-weight:600; color:var(--muted); }
+    input { width:100%; padding:12px; border-radius:12px; border:1px solid #1f2937; background:#0b1224; color:var(--text); box-sizing:border-box; }
+    button { margin-top:12px; width:100%; padding:12px; border:none; border-radius:12px; background:linear-gradient(90deg,#22d3ee,#6366f1); color:#0b1224; font-weight:800; cursor:pointer; }
+    pre { background:#0b1224; border:1px solid #1f2937; border-radius:12px; padding:12px; min-height:140px; white-space:pre-wrap; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Rate Limiting Visualizer</h1>
+      <p style="margin:6px 0 0;color:var(--muted);">Token bucket simulation with burst and steady rate controls.</p>
+    </div>
+    <div style="padding:8px 12px;border:1px solid #1f2937;border-radius:10px;">Offline · Static</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <label for="rate">Rate (requests/sec)</label>
+      <input id="rate" type="number" value="10" />
+      <label for="burst">Burst size</label>
+      <input id="burst" type="number" value="20" />
+      <label for="duration">Duration (seconds)</label>
+      <input id="duration" type="number" value="10" />
+      <button onclick="simulate()">Simulate</button>
+    </section>
+    <section class="card">
+      <h2 style="margin-top:0;">Timeline</h2>
+      <pre id="timeline"></pre>
+    </section>
+  </main>
+
+  <script>
+    function simulate() {
+      const rate = Number(document.getElementById('rate').value) || 1;
+      const burst = Number(document.getElementById('burst').value) || 1;
+      const duration = Number(document.getElementById('duration').value) || 1;
+      let tokens = burst;
+      const lines = [];
+      for (let t = 0; t <= duration; t++) {
+        tokens = Math.min(burst, tokens + rate);
+        const allowed = Math.min(tokens, rate);
+        tokens -= allowed;
+        lines.push(`${t}s: allow ${allowed.toFixed(0)} req · tokens left ${tokens.toFixed(0)}`);
+      }
+      document.getElementById('timeline').textContent = lines.join('\n');
+    }
+    simulate();
+  </script>
+</body>
+</html>
