@@ -4,7 +4,8 @@ A curated collection of skills for [Google Antigravity](https://antigravity.goog
 
 ## What are Skills?
 
-Skills are reusable packages of knowledge that extend what Antigravity agents can accomplish. Each skill contains:
+Skills are reusable packages of knowledge that extend what Antigravity agents can accomplish. 
+Each skill contains:
 - **SKILL.md** — Instructions for the agent on how to approach a specific type of task
 - Optional workflows, scripts, templates, or resources
 

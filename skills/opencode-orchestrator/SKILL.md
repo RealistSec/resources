@@ -6,7 +6,7 @@ description: Delegate complex coding, refactoring, research, or multi-step devel
 # OpenCode Orchestrator
 
 <purpose>
-This skill enables Antigravity to delegate complex, multi-step coding tasks to OpenCode—a terminal-based autonomous AI coding agent. OpenCode operates independently with its own context, tools, and model access, making it ideal for tasks requiring deep focus, extensive file operations, or specialized model capabilities.
+This skill enables Antigravity to delegate complex multi-step coding tasks to OpenCode—a terminal-based autonomous AI coding agent. OpenCode operates independently with its own context, tools, and model access, making it ideal for tasks requiring deep focus, extensive file operations, or specialized model capabilities.
 </purpose>
 
 ## Trigger Workflow

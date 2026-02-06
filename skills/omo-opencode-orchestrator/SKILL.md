@@ -6,7 +6,7 @@ description: Delegate complex coding tasks to OpenCode with Oh My OpenCode (OMO)
 # OMO OpenCode Orchestrator
 
 <purpose>
-This skill enables Antigravity to delegate complex, multi-step coding tasks to OpenCode enhanced with **Oh My OpenCode (OMO)**—a batteries-included plugin providing curated agents, parallel execution, and productivity features. OMO transforms OpenCode into a full development team with specialized agents for different task types.
+This skill enables Antigravity to delegate complex, multi-step coding tasks to OpenCode enhanced with **Oh My OpenCode (OMO)**—a batteries-included plugin providing curated agents, parallel execution, and productivity features. OMO transforms OpenCode into a full development team with specialized  agents for different task types.
 </purpose>
 
 ## Trigger Workflow

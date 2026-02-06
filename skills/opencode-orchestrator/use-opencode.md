@@ -4,7 +4,7 @@ description: Delegate a task to OpenCode CLI agent for autonomous execution
 
 # Use OpenCode Orchestrator
 
-Trigger this workflow to hand off a complex coding task to OpenCode.
+Trigger this workflow to hand off a complex coding task to OpenCode from AntiGravity.
 
 ## Usage
 

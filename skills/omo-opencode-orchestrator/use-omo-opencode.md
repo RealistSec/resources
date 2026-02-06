@@ -12,7 +12,7 @@ When invoked, follow these steps:
 
 1. **Ask the user for task details** (if not already provided):
    - What is the task to be completed?
-   - Which agent is best suited? (or use ultrawork for auto-selection)
+   - Which agent is best suited? (or use ultrawork for auto-selection) 
    - Any specific constraints or requirements?
 
 2. **Read the skill instructions**:
