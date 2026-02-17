@@ -1,63 +1,1694 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rate Limiting Visualizer</title>
+  <title>Rate Limiting Visualizer — Interactive Token Bucket & Sliding Window Simulator | RealistSec</title>
+  <meta name="description"
+    content="Free interactive rate limiting visualizer. Simulate Token Bucket, Sliding Window, Fixed Window & Leaky Bucket algorithms with animated SVG visuals. Works offline.">
+  <meta name="keywords"
+    content="rate limiting, token bucket, sliding window, leaky bucket, API rate limit, visualizer, simulator, RealistSec">
+  <meta name="author" content="RealistSec">
+  <link rel="canonical" href="https://realistsec.com/resources/rate-limiting-visualizer">
+  <!-- Open Graph -->
+  <meta property="og:title" content="Rate Limiting Visualizer — Interactive Simulator | RealistSec">
+  <meta property="og:description"
+    content="Visualize and understand rate limiting algorithms with interactive SVG animations. Token Bucket, Sliding Window, Fixed Window & Leaky Bucket.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://realistsec.com/resources/rate-limiting-visualizer">
+  <meta property="og:site_name" content="RealistSec">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Rate Limiting Visualizer | RealistSec">
+  <meta name="twitter:description"
+    content="Interactive rate limiting algorithm simulator with animated visuals. Free, offline-capable.">
+  <!-- Fonts: graceful degradation for offline -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <!-- JSON-LD: WebApplication -->
+  <script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"WebApplication",
+  "name":"Rate Limiting Visualizer",
+  "url":"https://realistsec.com/resources/rate-limiting-visualizer",
+  "description":"Interactive rate limiting algorithm visualizer supporting Token Bucket, Sliding Window, Fixed Window and Leaky Bucket with animated SVG simulations.",
+  "applicationCategory":"DeveloperApplication",
+  "operatingSystem":"Any",
+  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},
+  "author":{"@type":"Organization","name":"RealistSec","url":"https://realistsec.com"}
+}
+</script>
+  <!-- JSON-LD: FAQPage (synced with visible FAQ below) -->
+  <script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"FAQPage",
+  "mainEntity":[
+    {"@type":"Question","name":"What is rate limiting?","acceptedAnswer":{"@type":"Answer","text":"Rate limiting is a technique used to control the number of requests a client can make to a server within a given time window. It protects APIs and services from abuse, brute-force attacks, and resource exhaustion."}},
+    {"@type":"Question","name":"What is a Token Bucket algorithm?","acceptedAnswer":{"@type":"Answer","text":"The Token Bucket algorithm uses a bucket that fills with tokens at a steady rate. Each request consumes a token. When the bucket is empty, requests are rejected. The bucket has a maximum capacity allowing short bursts of traffic."}},
+    {"@type":"Question","name":"What is the difference between Token Bucket and Leaky Bucket?","acceptedAnswer":{"@type":"Answer","text":"Token Bucket allows bursts up to the bucket capacity and then limits to the refill rate. Leaky Bucket processes requests at a constant rate regardless of input, smoothing out bursts entirely. Token Bucket is more permissive for bursty traffic."}},
+    {"@type":"Question","name":"How does Sliding Window rate limiting work?","acceptedAnswer":{"@type":"Answer","text":"Sliding Window tracks requests in a continuously moving time window. Unlike Fixed Window, it avoids the boundary problem where a user could make double the allowed requests at the boundary between two windows."}},
+    {"@type":"Question","name":"What is Fixed Window rate limiting?","acceptedAnswer":{"@type":"Answer","text":"Fixed Window divides time into discrete intervals (e.g. 1-second windows) and counts requests per window. When the count exceeds the limit the remaining requests in that window are rejected. It resets at each window boundary."}},
+    {"@type":"Question","name":"Why is rate limiting important for API security?","acceptedAnswer":{"@type":"Answer","text":"Rate limiting prevents denial-of-service attacks, brute-force login attempts, web scraping abuse, and resource exhaustion. It ensures fair usage across clients and protects backend infrastructure from overload."}},
+    {"@type":"Question","name":"Can I use this tool offline?","acceptedAnswer":{"@type":"Answer","text":"Yes. This tool is a standalone HTML file with zero external dependencies for core functionality. Fonts gracefully fall back to system fonts when offline. You can save it to a USB drive and run it anywhere."}},
+    {"@type":"Question","name":"Which rate limiting algorithm should I use?","acceptedAnswer":{"@type":"Answer","text":"Token Bucket is ideal for APIs that need to allow occasional bursts. Sliding Window is best for precise, fair limiting. Fixed Window is simplest to implement. Leaky Bucket is perfect for smoothing traffic to a constant rate, such as message queues."}}
+  ]
+}
+</script>
   <style>
-    :root { color-scheme: light dark; --bg:#0b1224; --panel:#111a2f; --text:#e5e7eb; --muted:#94a3b8; --accent:#22d3ee; }
-    body { margin:0; font-family:'Inter',system-ui; background:linear-gradient(135deg,#0b1224 15%,#0f172a 60%); color:var(--text); min-height:100vh; }
-    header { padding:22px 30px; border-bottom:1px solid #1f2937; display:flex; justify-content:space-between; gap:12px; align-items:center; }
-    h1 { margin:0; font-size:clamp(24px,4vw,32px); }
-    main { padding:22px 30px 40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; }
-    .card { background:rgba(255,255,255,0.03); border:1px solid #1f2937; border-radius:14px; padding:16px; box-shadow:0 14px 32px rgba(0,0,0,0.3); }
-    label { display:block; margin:8px 0 6px; font-weight:600; color:var(--muted); }
-    input { width:100%; padding:12px; border-radius:12px; border:1px solid #1f2937; background:#0b1224; color:var(--text); box-sizing:border-box; }
-    button { margin-top:12px; width:100%; padding:12px; border:none; border-radius:12px; background:linear-gradient(90deg,#22d3ee,#6366f1); color:#0b1224; font-weight:800; cursor:pointer; }
-    pre { background:#0b1224; border:1px solid #1f2937; border-radius:12px; padding:12px; min-height:140px; white-space:pre-wrap; }
+    /* ============================================================
+   RATE LIMITING VISUALIZER — Design System
+   Author: RealistSec | https://realistsec.com
+   ============================================================ */
+
+    /* --- CSS Custom Properties (Light Theme Default) --- */
+    :root {
+      --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+      --bg: #f8fafc;
+      --bg-alt: #f1f5f9;
+      --surface: #ffffff;
+      --surface-alt: #f8fafc;
+      --border: #e2e8f0;
+      --border-hover: #cbd5e1;
+      --text: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --accent: #0d9488;
+      --accent-hover: #0f766e;
+      --accent-light: #ccfbf1;
+      --success: #10b981;
+      --success-bg: #d1fae5;
+      --danger: #ef4444;
+      --danger-bg: #fee2e2;
+      --warning: #f59e0b;
+      --warning-bg: #fef3c7;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, .05);
+      --shadow: 0 4px 16px rgba(0, 0, 0, .06);
+      --shadow-lg: 0 12px 40px rgba(0, 0, 0, .08);
+      --radius: 12px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+      --ease: cubic-bezier(.4, 0, .2, 1);
+    }
+
+    /* --- Dark Theme --- */
+    [data-theme="dark"] {
+      --bg: #0b1120;
+      --bg-alt: #111827;
+      --surface: #1e293b;
+      --surface-alt: #1e293b;
+      --border: #334155;
+      --border-hover: #475569;
+      --text: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #64748b;
+      --accent: #2dd4bf;
+      --accent-hover: #5eead4;
+      --accent-light: rgba(45, 212, 191, .12);
+      --success: #34d399;
+      --success-bg: rgba(52, 211, 153, .15);
+      --danger: #f87171;
+      --danger-bg: rgba(248, 113, 113, .15);
+      --warning: #fbbf24;
+      --warning-bg: rgba(251, 191, 36, .15);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, .2);
+      --shadow: 0 4px 16px rgba(0, 0, 0, .25);
+      --shadow-lg: 0 12px 40px rgba(0, 0, 0, .35);
+    }
+
+    /* --- Reset & Base --- */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      transition: background .35s var(--ease), color .35s var(--ease);
+    }
+
+    /* --- Utility --- */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+
+    /* --- Header --- */
+    .site-header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: background .35s var(--ease), border-color .35s var(--ease);
+    }
+
+    [data-theme="dark"] .site-header {
+      background: rgba(11, 17, 32, .85);
+    }
+
+    .header-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+    }
+
+    .brand-name {
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -.3px;
+    }
+
+    .header-title {
+      text-align: center;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .header-title h1 {
+      font-size: clamp(18px, 3vw, 24px);
+      font-weight: 800;
+      letter-spacing: -.5px;
+      line-height: 1.2;
+    }
+
+    .header-title p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* --- Theme Toggle --- */
+    .theme-toggle {
+      position: relative;
+      width: 52px;
+      height: 28px;
+      border-radius: var(--radius-full);
+      background: var(--border);
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      transition: background .3s var(--ease);
+    }
+
+    .theme-toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
+      transition: transform .3s var(--ease);
+    }
+
+    [data-theme="dark"] .theme-toggle {
+      background: var(--accent);
+    }
+
+    [data-theme="dark"] .theme-toggle::after {
+      transform: translateX(24px);
+    }
+
+    .theme-toggle-icons {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 6px;
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    /* --- Tabs --- */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-alt);
+      padding: 4px;
+      border-radius: var(--radius);
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      flex: 1;
+      min-width: 120px;
+      padding: 10px 16px;
+      border: none;
+      border-radius: calc(var(--radius) - 2px);
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-body);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all .25s var(--ease);
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    .tab-btn.active {
+      background: var(--surface);
+      color: var(--accent);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* --- Cards & Panels --- */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      transition: all .35s var(--ease);
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-lg);
+      border-color: var(--border-hover);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    /* --- Form Controls --- */
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .form-input,
+    .form-select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) - 2px);
+      background: var(--bg-alt);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-light);
+    }
+
+    .form-select {
+      cursor: pointer;
+    }
+
+    /* --- Buttons --- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: calc(var(--radius) - 2px);
+      font-family: var(--font-body);
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all .25s var(--ease);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(13, 148, 136, .3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(13, 148, 136, .4);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-full {
+      width: 100%;
+    }
+
+    .btn-sm {
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Ripple effect */
+    .btn .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .3);
+      transform: scale(0);
+      animation: ripple-anim .6s linear;
+    }
+
+    @keyframes ripple-anim {
+      to {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+
+    /* --- Layout Grid --- */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 24px;
+      margin-top: 24px;
+    }
+
+    @media(max-width:860px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .viz-area {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* --- SVG Visualizer --- */
+    .viz-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      min-height: 300px;
+      background: var(--bg-alt);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .viz-container svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* --- Stats Bar --- */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      text-align: center;
+      transition: all .3s var(--ease);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+
+    .stat-value.allowed {
+      color: var(--success);
+    }
+
+    .stat-value.rejected {
+      color: var(--danger);
+    }
+
+    .stat-value.rate {
+      color: var(--accent);
+    }
+
+    .stat-value.burst {
+      color: var(--warning);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      font-weight: 500;
+    }
+
+    /* --- Timeline Chart --- */
+    .timeline-chart {
+      width: 100%;
+      height: 180px;
+    }
+
+    /* --- Code Snippets --- */
+    .code-block {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      position: relative;
+    }
+
+    .code-block .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 4px 10px;
+      font-size: 11px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-weight: 600;
+      transition: all .2s;
+    }
+
+    .code-block .copy-btn:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* --- FAQ --- */
+    .faq-section {
+      margin-top: 48px;
+      padding: 48px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .faq-section h2 {
+      font-size: clamp(22px, 3vw, 28px);
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 32px;
+      letter-spacing: -.5px;
+    }
+
+    .faq-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 16px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .faq-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: all .3s var(--ease);
+    }
+
+    .faq-item:hover {
+      border-color: var(--border-hover);
+    }
+
+    .faq-q {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 20px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 15px;
+      background: none;
+      border: none;
+      width: 100%;
+      text-align: left;
+      color: var(--text);
+      font-family: var(--font-body);
+      transition: color .2s;
+    }
+
+    .faq-q:hover {
+      color: var(--accent);
+    }
+
+    .faq-q .chevron {
+      font-size: 18px;
+      transition: transform .3s var(--ease);
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .faq-item.open .faq-q .chevron {
+      transform: rotate(180deg);
+    }
+
+    .faq-a {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height .4s var(--ease), padding .4s var(--ease);
+      padding: 0 20px;
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .faq-item.open .faq-a {
+      max-height: 300px;
+      padding: 0 20px 18px;
+    }
+
+    /* --- Footer --- */
+    .site-footer {
+      margin-top: 48px;
+      padding: 32px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .site-footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .site-footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* --- Animations --- */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(16px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.05);
+      }
+    }
+
+    @keyframes shake {
+
+      0%,
+      100% {
+        transform: translateX(0);
+      }
+
+      20%,
+      60% {
+        transform: translateX(-4px);
+      }
+
+      40%,
+      80% {
+        transform: translateX(4px);
+      }
+    }
+
+    @keyframes dropIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fillUp {
+      from {
+        transform: scaleY(0);
+      }
+
+      to {
+        transform: scaleY(1);
+      }
+    }
+
+    @keyframes drip {
+      0% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+    }
+
+    .animate-in {
+      animation: fadeInUp .5s var(--ease) both;
+    }
+
+    .pulse {
+      animation: pulse .4s var(--ease);
+    }
+
+    /* --- Noscript --- */
+    noscript .noscript-msg {
+      text-align: center;
+      padding: 48px 24px;
+      font-size: 18px;
+      color: var(--text-secondary);
+    }
+
+    /* --- Print --- */
+    @media print {
+
+      .site-header,
+      .header-actions,
+      .theme-toggle,
+      .btn,
+      .code-block .copy-btn {
+        display: none !important;
+      }
+    }
   </style>
 </head>
+
 <body>
-  <header>
-    <div>
-      <h1>Rate Limiting Visualizer</h1>
-      <p style="margin:6px 0 0;color:var(--muted);">Token bucket simulation with burst and steady rate controls.</p>
+
+  <!-- ============================================================
+     HEADER
+     ============================================================ -->
+  <header class="site-header" role="banner">
+    <div class="container header-inner">
+      <a href="https://realistsec.com" class="brand" aria-label="RealistSec Home" target="_blank" rel="noopener">
+        <!-- Inline SVG shield logo -->
+        <svg class="brand-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <path d="M16 2L4 8v8c0 7.2 5.1 13.3 12 15 6.9-1.7 12-7.8 12-15V8L16 2z" fill="var(--accent)" opacity=".15" />
+          <path d="M16 2L4 8v8c0 7.2 5.1 13.3 12 15 6.9-1.7 12-7.8 12-15V8L16 2z" stroke="var(--accent)"
+            stroke-width="1.5" fill="none" />
+          <path d="M12 16l3 3 5-6" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" />
+        </svg>
+        <span class="brand-name">RealistSec</span>
+      </a>
+      <div class="header-title">
+        <h1>Rate Limiting Visualizer</h1>
+        <p>Interactive algorithm simulator &amp; learning tool</p>
+      </div>
+      <div class="header-actions">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme">
+          <span class="theme-toggle-icons"><span>☀️</span><span>🌙</span></span>
+        </button>
+      </div>
     </div>
-    <div style="padding:8px 12px;border:1px solid #1f2937;border-radius:10px;">Offline · Static</div>
   </header>
 
-  <main>
-    <section class="card">
-      <label for="rate">Rate (requests/sec)</label>
-      <input id="rate" type="number" value="10" />
-      <label for="burst">Burst size</label>
-      <input id="burst" type="number" value="20" />
-      <label for="duration">Duration (seconds)</label>
-      <input id="duration" type="number" value="10" />
-      <button onclick="simulate()">Simulate</button>
+  <noscript>
+    <div class="noscript-msg container">
+      <p>⚠️ This tool requires JavaScript to run the simulations. Please enable JavaScript.</p>
+    </div>
+  </noscript>
+
+  <!-- ============================================================
+     MAIN CONTENT
+     ============================================================ -->
+  <main class="container" role="main">
+
+    <!-- Algorithm Tabs -->
+    <nav class="tabs" role="tablist" aria-label="Algorithm selector" style="margin-top:24px;">
+      <button class="tab-btn active" role="tab" data-algo="token-bucket" aria-selected="true">🪣 Token Bucket</button>
+      <button class="tab-btn" role="tab" data-algo="sliding-window" aria-selected="false">🔄 Sliding Window</button>
+      <button class="tab-btn" role="tab" data-algo="fixed-window" aria-selected="false">📊 Fixed Window</button>
+      <button class="tab-btn" role="tab" data-algo="leaky-bucket" aria-selected="false">💧 Leaky Bucket</button>
+    </nav>
+
+    <div class="main-grid">
+
+      <!-- ==================== LEFT: Controls ==================== -->
+      <aside class="card animate-in" id="controlsPanel" aria-label="Simulation controls">
+        <div class="card-title">⚙️ Configuration</div>
+
+        <!-- Dynamic fields injected by JS based on selected algorithm -->
+        <div id="algoFields"></div>
+
+        <div class="form-group">
+          <label class="form-label" for="trafficPattern">Traffic Pattern</label>
+          <select class="form-select" id="trafficPattern">
+            <option value="steady">Steady (constant rate)</option>
+            <option value="burst">Burst (periodic spikes)</option>
+            <option value="random">Random (Poisson)</option>
+            <option value="ramp">Ramp-up (increasing)</option>
+            <option value="spike">Single Spike</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="simDuration">Duration (seconds)</label>
+          <input class="form-input" id="simDuration" type="number" min="3" max="60" value="15">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reqRate">Incoming Request Rate (req/s)</label>
+          <input class="form-input" id="reqRate" type="number" min="1" max="200" value="20">
+        </div>
+
+        <button class="btn btn-primary btn-full" id="runBtn" aria-label="Start simulation">
+          <span id="runBtnText">▶ Run Simulation</span>
+        </button>
+        <button class="btn btn-outline btn-full btn-sm" id="resetBtn" style="margin-top:8px;"
+          aria-label="Reset simulation">↺ Reset</button>
+
+        <!-- Algorithm description -->
+        <div id="algoDesc"
+          style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border);font-size:13px;color:var(--text-secondary);line-height:1.6;">
+        </div>
+      </aside>
+
+      <!-- ==================== RIGHT: Visualisation ==================== -->
+      <div class="viz-area">
+
+        <!-- Main SVG Visualizer -->
+        <section class="card animate-in" style="animation-delay:.1s; padding:16px;">
+          <div class="viz-container" id="vizContainer" aria-label="Algorithm visualization">
+            <svg id="vizSvg" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet"></svg>
+          </div>
+        </section>
+
+        <!-- Stats -->
+        <div class="stats-bar animate-in" style="animation-delay:.2s;">
+          <div class="stat-card">
+            <div class="stat-value rate" id="statTotal">0</div>
+            <div class="stat-label">Total Requests</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value allowed" id="statAllowed">0</div>
+            <div class="stat-label">Allowed</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value rejected" id="statRejected">0</div>
+            <div class="stat-label">Rejected</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value burst" id="statPercent">0%</div>
+            <div class="stat-label">Accept Rate</div>
+          </div>
+        </div>
+
+        <!-- Timeline Chart -->
+        <section class="card animate-in" style="animation-delay:.3s; padding:16px;">
+          <div class="card-title">📈 Timeline</div>
+          <svg class="timeline-chart" id="timelineChart" viewBox="0 0 800 180"
+            preserveAspectRatio="xMidYMid meet"></svg>
+        </section>
+
+        <!-- Code Snippets -->
+        <section class="card animate-in" style="animation-delay:.4s;">
+          <div class="card-title">💻 Implementation Snippets</div>
+          <nav class="tabs" role="tablist" aria-label="Code snippet selector" style="margin-bottom:16px;">
+            <button class="tab-btn active" role="tab" data-snippet="nginx">Nginx</button>
+            <button class="tab-btn" role="tab" data-snippet="express">Express.js</button>
+            <button class="tab-btn" role="tab" data-snippet="cloudflare">CF Workers</button>
+          </nav>
+          <div class="code-block" id="snippetBlock"><button class="copy-btn" id="copySnippetBtn"
+              aria-label="Copy code">Copy</button>
+            <pre id="snippetCode"></pre>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- ============================================================
+       FAQ SECTION
+       ============================================================ -->
+    <section class="faq-section" id="faq" aria-label="Frequently asked questions">
+      <h2>Frequently Asked Questions</h2>
+      <div class="faq-grid" id="faqGrid">
+        <!-- FAQ items injected by JS from the same data as JSON-LD -->
+      </div>
     </section>
-    <section class="card">
-      <h2 style="margin-top:0;">Timeline</h2>
-      <pre id="timeline"></pre>
-    </section>
+
   </main>
 
+  <!-- ============================================================
+     FOOTER
+     ============================================================ -->
+  <footer class="site-footer" role="contentinfo">
+    <div class="container">
+      <p>Built by <a href="https://realistsec.com" target="_blank" rel="noopener">RealistSec</a> · Free &amp; Open
+        Source · <a href="https://github.com/RealistSec/resources" target="_blank" rel="noopener">⭐ Star on GitHub</a>
+      </p>
+      <p style="margin-top:6px;">Works offline · Zero dependencies · &copy; 2025 RealistSec</p>
+    </div>
+  </footer>
+
   <script>
-    function simulate() {
-      const rate = Number(document.getElementById('rate').value) || 1;
-      const burst = Number(document.getElementById('burst').value) || 1;
-      const duration = Number(document.getElementById('duration').value) || 1;
-      let tokens = burst;
-      const lines = [];
-      for (let t = 0; t <= duration; t++) {
-        tokens = Math.min(burst, tokens + rate);
-        const allowed = Math.min(tokens, rate);
-        tokens -= allowed;
-        lines.push(`${t}s: allow ${allowed.toFixed(0)} req · tokens left ${tokens.toFixed(0)}`);
-      }
-      document.getElementById('timeline').textContent = lines.join('\n');
+    /* ============================================================
+       RATE LIMITING VISUALIZER — Core Engine
+       Author: RealistSec | https://realistsec.com
+       All logic runs entirely client-side. No external dependencies.
+       ============================================================ */
+    'use strict';
+
+    /* ---- State ---- */
+    const S = {
+      algo: 'token-bucket', running: false, animId: null, simTimer: null,
+      stats: { total: 0, allowed: 0, rejected: 0 },
+      history: [], // [{t, allowed, rejected}]
+      particles: [], // for SVG micro-animations
+      bucketLevel: 0, windowReqs: [], leakQueue: 0,
+    };
+
+    /* ---- DOM refs ---- */
+    const $ = id => document.getElementById(id);
+    const vizSvg = $('vizSvg');
+    const timelineChart = $('timelineChart');
+
+    /* ===========================================================
+       THEME TOGGLE
+       =========================================================== */
+    (function initTheme() {
+      const saved = localStorage.getItem('rlv-theme');
+      if (saved) document.documentElement.setAttribute('data-theme', saved);
+      $('themeToggle').addEventListener('click', () => {
+        const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('rlv-theme', next);
+      });
+    })();
+
+    /* ===========================================================
+       ALGORITHM DEFINITIONS
+       =========================================================== */
+    const ALGOS = {
+      'token-bucket': {
+        label: 'Token Bucket',
+        desc: 'Tokens are added to a bucket at a steady <strong>refill rate</strong>. Each request consumes one token. If the bucket is empty, the request is rejected. The bucket has a <strong>max capacity</strong> allowing short bursts.',
+        fields: [
+          { id: 'tbCapacity', label: 'Bucket Capacity (tokens)', value: 20, min: 1, max: 200 },
+          { id: 'tbRefill', label: 'Refill Rate (tokens/sec)', value: 10, min: 1, max: 100 },
+        ],
+      },
+      'sliding-window': {
+        label: 'Sliding Window',
+        desc: 'Tracks requests in a <strong>continuously sliding</strong> time window. Avoids the boundary-burst problem of fixed windows by weighting the previous window\'s count.',
+        fields: [
+          { id: 'swLimit', label: 'Max Requests per Window', value: 15, min: 1, max: 200 },
+          { id: 'swWindow', label: 'Window Size (seconds)', value: 3, min: 1, max: 30 },
+        ],
+      },
+      'fixed-window': {
+        label: 'Fixed Window',
+        desc: 'Time is divided into <strong>fixed intervals</strong>. Requests are counted per window. Once the limit is hit, all further requests in that window are rejected. Resets at each boundary.',
+        fields: [
+          { id: 'fwLimit', label: 'Max Requests per Window', value: 15, min: 1, max: 200 },
+          { id: 'fwWindow', label: 'Window Size (seconds)', value: 3, min: 1, max: 30 },
+        ],
+      },
+      'leaky-bucket': {
+        label: 'Leaky Bucket',
+        desc: 'Requests enter a <strong>queue (bucket)</strong> and are processed at a constant <strong>leak rate</strong>. If the queue overflows, requests are rejected. Produces perfectly smooth output traffic.',
+        fields: [
+          { id: 'lbCapacity', label: 'Queue Capacity', value: 20, min: 1, max: 200 },
+          { id: 'lbLeak', label: 'Leak Rate (req/sec)', value: 8, min: 1, max: 100 },
+        ],
+      },
+    };
+
+    /* ===========================================================
+       ALGORITHM TAB SWITCHING
+       =========================================================== */
+    document.querySelectorAll('[data-algo]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (S.running) return;
+        document.querySelectorAll('[data-algo]').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        S.algo = btn.dataset.algo;
+        renderAlgoFields();
+        renderAlgoDesc();
+        resetSim();
+        drawIdleViz();
+      });
+    });
+
+    function renderAlgoFields() {
+      const fields = ALGOS[S.algo].fields;
+      $('algoFields').innerHTML = fields.map(f =>
+        `<div class="form-group"><label class="form-label" for="${f.id}">${f.label}</label>` +
+        `<input class="form-input" id="${f.id}" type="number" min="${f.min}" max="${f.max}" value="${f.value}"></div>`
+      ).join('');
     }
-    simulate();
+
+    function renderAlgoDesc() {
+      $('algoDesc').innerHTML = `<strong>${ALGOS[S.algo].label}</strong><br>${ALGOS[S.algo].desc}`;
+    }
+
+    /* ===========================================================
+       TRAFFIC PATTERN GENERATORS
+       =========================================================== */
+    function genTraffic(pattern, rps, t, duration) {
+      switch (pattern) {
+        case 'steady': return rps;
+        case 'burst': return (t % 4 < 1) ? rps * 3 : Math.ceil(rps * 0.4);
+        case 'random': {
+          // Poisson-ish
+          let count = 0;
+          for (let i = 0; i < rps * 2; i++) if (Math.random() < 0.5) count++;
+          return Math.max(1, count);
+        }
+        case 'ramp': return Math.ceil(rps * (t + 1) / duration);
+        case 'spike': return (Math.abs(t - Math.floor(duration / 2)) < 2) ? rps * 4 : Math.ceil(rps * 0.3);
+        default: return rps;
+      }
+    }
+
+    /* ===========================================================
+       SIMULATION ENGINES (per-algorithm)
+       =========================================================== */
+    function simStep_tokenBucket(nReqs) {
+      const cap = Number($('tbCapacity').value) || 20;
+      const refill = Number($('tbRefill').value) || 10;
+      // Refill
+      S.bucketLevel = Math.min(cap, S.bucketLevel + refill);
+      let allowed = 0, rejected = 0;
+      for (let i = 0; i < nReqs; i++) {
+        if (S.bucketLevel >= 1) { S.bucketLevel--; allowed++; }
+        else rejected++;
+      }
+      return { allowed, rejected, level: S.bucketLevel, capacity: cap };
+    }
+
+    function simStep_slidingWindow(nReqs, t) {
+      const limit = Number($('swLimit').value) || 15;
+      const win = Number($('swWindow').value) || 3;
+      // Remove old entries outside window
+      S.windowReqs = S.windowReqs.filter(ts => ts > t - win);
+      let allowed = 0, rejected = 0;
+      for (let i = 0; i < nReqs; i++) {
+        if (S.windowReqs.length < limit) { S.windowReqs.push(t + i * 0.01); allowed++; }
+        else rejected++;
+      }
+      return { allowed, rejected, count: S.windowReqs.length, limit, winSize: win };
+    }
+
+    function simStep_fixedWindow(nReqs, t) {
+      const limit = Number($('fwLimit').value) || 15;
+      const win = Number($('fwWindow').value) || 3;
+      const windowStart = Math.floor(t / win) * win;
+      // Reset if new window
+      if (!S._fwStart || S._fwStart !== windowStart) { S._fwCount = 0; S._fwStart = windowStart; }
+      let allowed = 0, rejected = 0;
+      for (let i = 0; i < nReqs; i++) {
+        if (S._fwCount < limit) { S._fwCount++; allowed++; }
+        else rejected++;
+      }
+      return { allowed, rejected, count: S._fwCount, limit, winStart: windowStart, winSize: win };
+    }
+
+    function simStep_leakyBucket(nReqs) {
+      const cap = Number($('lbCapacity').value) || 20;
+      const leak = Number($('lbLeak').value) || 8;
+      // Leak
+      S.leakQueue = Math.max(0, S.leakQueue - leak);
+      let allowed = 0, rejected = 0;
+      for (let i = 0; i < nReqs; i++) {
+        if (S.leakQueue < cap) { S.leakQueue++; allowed++; }
+        else rejected++;
+      }
+      return { allowed, rejected, queue: S.leakQueue, capacity: cap, leaked: leak };
+    }
+
+    /* ===========================================================
+       SVG HELPERS
+       =========================================================== */
+    const NS = 'http://www.w3.org/2000/svg';
+    function svgEl(tag, attrs) {
+      const el = document.createElementNS(NS, tag);
+      for (const [k, v] of Object.entries(attrs || {})) el.setAttribute(k, v);
+      return el;
+    }
+
+    function clearSvg(svg) { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+
+    /* Compute CSS var value */
+    function cssVar(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    /* ===========================================================
+       SVG IDLE VISUALIZATIONS (before sim runs)
+       =========================================================== */
+    function drawIdleViz() {
+      clearSvg(vizSvg);
+      const accent = cssVar('--accent') || '#0d9488';
+      const muted = cssVar('--text-muted') || '#94a3b8';
+      const border = cssVar('--border') || '#e2e8f0';
+
+      switch (S.algo) {
+        case 'token-bucket': drawIdleBucket(accent, muted, border); break;
+        case 'sliding-window': drawIdleSlidingWindow(accent, muted, border); break;
+        case 'fixed-window': drawIdleFixedWindow(accent, muted, border); break;
+        case 'leaky-bucket': drawIdleLeakyBucket(accent, muted, border); break;
+      }
+    }
+
+    function drawIdleBucket(accent, muted, border) {
+      // Bucket outline
+      const cap = Number(document.getElementById('tbCapacity')?.value) || 20;
+      const bx = 320, by = 60, bw = 160, bh = 280;
+      // Bucket body
+      vizSvg.appendChild(svgEl('rect', { x: bx, y: by, width: bw, height: bh, rx: 16, fill: 'none', stroke: border, 'stroke-width': 2 }));
+      // Water level at full
+      const waterH = bh * 0.7;
+      const waterY = by + bh - waterH;
+      const waterRect = svgEl('rect', { x: bx + 4, y: waterY, width: bw - 8, height: waterH - 4, rx: 12, fill: accent, opacity: 0.25 });
+      vizSvg.appendChild(waterRect);
+      // Tokens (circles)
+      for (let i = 0; i < Math.min(cap, 12); i++) {
+        const row = Math.floor(i / 4), col = i % 4;
+        const cx = bx + 30 + col * 35, cy = waterY + 30 + row * 40;
+        if (cy < by + bh - 10) {
+          vizSvg.appendChild(svgEl('circle', { cx, cy, r: 12, fill: accent, opacity: 0.6 }));
+        }
+      }
+      // Labels
+      const lbl1 = svgEl('text', { x: 400, y: by - 10, 'text-anchor': 'middle', fill: muted, 'font-size': 14, 'font-family': 'var(--font-body)' });
+      lbl1.textContent = `Capacity: ${cap} tokens`;
+      vizSvg.appendChild(lbl1);
+      // Arrow in
+      vizSvg.appendChild(svgEl('line', { x1: 200, y1: 180, x2: bx - 10, y2: 180, stroke: accent, 'stroke-width': 2, 'stroke-dasharray': '6 3' }));
+      const arr1 = svgEl('text', { x: 220, y: 170, fill: muted, 'font-size': 12, 'font-family': 'var(--font-body)' });
+      arr1.textContent = 'Incoming →';
+      vizSvg.appendChild(arr1);
+      // Arrow out
+      vizSvg.appendChild(svgEl('line', { x1: bx + bw + 10, y1: 280, x2: 620, y2: 280, stroke: accent, 'stroke-width': 2, 'stroke-dasharray': '6 3' }));
+      const arr2 = svgEl('text', { x: 540, y: 270, fill: muted, 'font-size': 12, 'font-family': 'var(--font-body)' });
+      arr2.textContent = '→ Allowed';
+      vizSvg.appendChild(arr2);
+      // Title
+      const title = svgEl('text', { x: 400, y: 430, 'text-anchor': 'middle', fill: muted, 'font-size': 16, 'font-weight': 600, 'font-family': 'var(--font-body)' });
+      title.textContent = 'Press ▶ Run Simulation to begin';
+      vizSvg.appendChild(title);
+    }
+
+    function drawIdleSlidingWindow(accent, muted, border) {
+      // Timeline bar
+      vizSvg.appendChild(svgEl('rect', { x: 100, y: 200, width: 600, height: 60, rx: 12, fill: 'none', stroke: border, 'stroke-width': 2 }));
+      // Sliding window highlight
+      vizSvg.appendChild(svgEl('rect', { x: 350, y: 195, width: 200, height: 70, rx: 8, fill: accent, opacity: 0.12, stroke: accent, 'stroke-width': 1.5, 'stroke-dasharray': '6 3' }));
+      const lbl = svgEl('text', { x: 450, y: 185, 'text-anchor': 'middle', fill: accent, 'font-size': 13, 'font-weight': 600, 'font-family': 'var(--font-body)' });
+      lbl.textContent = '← sliding window →';
+      vizSvg.appendChild(lbl);
+      // Dots
+      for (let i = 0; i < 15; i++) {
+        vizSvg.appendChild(svgEl('circle', { cx: 130 + i * 40, cy: 230, r: 6, fill: i >= 6 && i <= 10 ? accent : muted, opacity: i >= 6 && i <= 10 ? 0.7 : 0.3 }));
+      }
+      const title = svgEl('text', { x: 400, y: 360, 'text-anchor': 'middle', fill: muted, 'font-size': 16, 'font-weight': 600, 'font-family': 'var(--font-body)' });
+      title.textContent = 'Press ▶ Run Simulation to begin';
+      vizSvg.appendChild(title);
+    }
+
+    function drawIdleFixedWindow(accent, muted, border) {
+      for (let i = 0; i < 5; i++) {
+        const x = 80 + i * 135, w = 120, h = 200 * ((i % 3 + 1) / 4);
+        vizSvg.appendChild(svgEl('rect', { x, y: 300 - h, width: w, height: h, rx: 8, fill: accent, opacity: 0.15 + (i % 3) * 0.12 }));
+        vizSvg.appendChild(svgEl('rect', { x, y: 300, width: w, height: 2, fill: border }));
+        const l = svgEl('text', { x: x + w / 2, y: 320, 'text-anchor': 'middle', fill: muted, 'font-size': 12, 'font-family': 'var(--font-body)' });
+        l.textContent = `W${i + 1}`;
+        vizSvg.appendChild(l);
+      }
+      const title = svgEl('text', { x: 400, y: 400, 'text-anchor': 'middle', fill: muted, 'font-size': 16, 'font-weight': 600, 'font-family': 'var(--font-body)' });
+      title.textContent = 'Press ▶ Run Simulation to begin';
+      vizSvg.appendChild(title);
+    }
+
+    function drawIdleLeakyBucket(accent, muted, border) {
+      const bx = 320, by = 80, bw = 160, bh = 260;
+      vizSvg.appendChild(svgEl('rect', { x: bx, y: by, width: bw, height: bh, rx: 16, fill: 'none', stroke: border, 'stroke-width': 2 }));
+      // Water
+      vizSvg.appendChild(svgEl('rect', { x: bx + 4, y: by + bh * 0.5, width: bw - 8, height: bh * 0.5 - 4, rx: 12, fill: '#3b82f6', opacity: 0.2 }));
+      // Leak hole
+      vizSvg.appendChild(svgEl('circle', { cx: 400, cy: by + bh + 5, r: 8, fill: accent, opacity: 0.5 }));
+      // Drips
+      for (let i = 0; i < 3; i++) {
+        const d = svgEl('circle', { cx: 400, cy: by + bh + 25 + i * 22, r: 4, fill: accent, opacity: 0.3 - i * 0.08 });
+        vizSvg.appendChild(d);
+      }
+      const lbl = svgEl('text', { x: 400, y: by - 10, 'text-anchor': 'middle', fill: muted, 'font-size': 14, 'font-family': 'var(--font-body)' });
+      lbl.textContent = 'Constant leak rate →';
+      vizSvg.appendChild(lbl);
+      const title = svgEl('text', { x: 400, y: 430, 'text-anchor': 'middle', fill: muted, 'font-size': 16, 'font-weight': 600, 'font-family': 'var(--font-body)' });
+      title.textContent = 'Press ▶ Run Simulation to begin';
+      vizSvg.appendChild(title);
+    }
+
+    /* ===========================================================
+       LIVE SVG VISUALIZATION (during sim)
+       =========================================================== */
+    function drawLiveViz(stepResult, t, duration) {
+      clearSvg(vizSvg);
+      const accent = cssVar('--accent') || '#0d9488';
+      const success = cssVar('--success') || '#10b981';
+      const danger = cssVar('--danger') || '#ef4444';
+      const muted = cssVar('--text-muted') || '#94a3b8';
+      const border = cssVar('--border') || '#e2e8f0';
+
+      switch (S.algo) {
+        case 'token-bucket': drawLiveBucket(stepResult, accent, success, danger, muted, border); break;
+        case 'sliding-window': drawLiveSlidingWindow(stepResult, t, accent, success, danger, muted, border); break;
+        case 'fixed-window': drawLiveFixedWindow(stepResult, t, accent, success, danger, muted, border); break;
+        case 'leaky-bucket': drawLiveLeakyBucket(stepResult, accent, success, danger, muted, border); break;
+      }
+    }
+
+    function drawLiveBucket(r, accent, success, danger, muted, border) {
+      const bx = 300, by = 50, bw = 200, bh = 300, cap = r.capacity;
+      const fillRatio = Math.max(0, Math.min(1, r.level / cap));
+      // Bucket
+      vizSvg.appendChild(svgEl('rect', { x: bx, y: by, width: bw, height: bh, rx: 18, fill: 'none', stroke: border, 'stroke-width': 2.5 }));
+      // Water
+      const waterH = bh * fillRatio;
+      if (waterH > 0) {
+        vizSvg.appendChild(svgEl('rect', { x: bx + 4, y: by + bh - waterH, width: bw - 8, height: waterH - 4 > 0 ? waterH - 4 : waterH, rx: 14, fill: accent, opacity: 0.3 }));
+        // Wave line
+        let wavePath = `M ${bx + 4} ${by + bh - waterH}`;
+        for (let x = 0; x <= bw - 8; x += 4) {
+          wavePath += ` L ${bx + 4 + x} ${by + bh - waterH + Math.sin(x * 0.08 + Date.now() * 0.003) * 4}`;
+        }
+        vizSvg.appendChild(svgEl('path', { d: wavePath, fill: 'none', stroke: accent, 'stroke-width': 2, opacity: 0.5 }));
+      }
+      // Token dots
+      const nTokens = Math.min(Math.round(r.level), 24);
+      for (let i = 0; i < nTokens; i++) {
+        const row = Math.floor(i / 5), col = i % 5;
+        const cx = bx + 30 + col * 36, cy = by + bh - 30 - row * 32;
+        if (cy > by + 10) vizSvg.appendChild(svgEl('circle', { cx, cy, r: 10, fill: accent, opacity: 0.7 }));
+      }
+      // Labels
+      const levelPct = Math.round(fillRatio * 100);
+      const lbl = svgEl('text', { x: 400, y: by - 12, 'text-anchor': 'middle', fill: muted, 'font-size': 15, 'font-weight': 600, 'font-family': 'var(--font-body)' });
+      lbl.textContent = `${Math.round(r.level)}/${cap} tokens (${levelPct}%)`;
+      vizSvg.appendChild(lbl);
+      // Allowed indicator
+      if (r.allowed > 0) {
+        const g = svgEl('circle', { cx: bx + bw + 60, cy: 200, r: 24 + r.allowed, fill: success, opacity: 0.3 });
+        vizSvg.appendChild(g);
+        const gl = svgEl('text', { x: bx + bw + 60, y: 205, 'text-anchor': 'middle', fill: success, 'font-size': 16, 'font-weight': 700, 'font-family': 'var(--font-body)' });
+        gl.textContent = `✓ ${r.allowed}`;
+        vizSvg.appendChild(gl);
+      }
+      // Rejected indicator
+      if (r.rejected > 0) {
+        const rx2 = bx - 60;
+        const rr = svgEl('circle', { cx: rx2, cy: 200, r: 24 + r.rejected, fill: danger, opacity: 0.25 });
+        vizSvg.appendChild(rr);
+        const rl = svgEl('text', { x: rx2, y: 205, 'text-anchor': 'middle', fill: danger, 'font-size': 16, 'font-weight': 700, 'font-family': 'var(--font-body)' });
+        rl.textContent = `✗ ${r.rejected}`;
+        vizSvg.appendChild(rl);
+      }
+      // Progress bar
+      drawProgressBar(vizSvg, muted, border);
+    }
+
+    function drawLiveSlidingWindow(r, t, accent, success, danger, muted, border) {
+      const barY = 180, barH = 80, barX = 80, barW = 640;
+      vizSvg.appendChild(svgEl('rect', { x: barX, y: barY, width: barW, height: barH, rx: 12, fill: 'none', stroke: border, 'stroke-width': 2 }));
+      // Window highlight
+      const winFrac = r.winSize / Math.max(Number($('simDuration').value) || 15, r.winSize);
+      const winW = barW * Math.min(winFrac, 0.8);
+      const winX = barX + barW - winW - 10;
+      vizSvg.appendChild(svgEl('rect', { x: winX, y: barY - 5, width: winW, height: barH + 10, rx: 8, fill: accent, opacity: 0.1, stroke: accent, 'stroke-width': 1.5, 'stroke-dasharray': '5 3' }));
+      // Request dots in window
+      const dotSpacing = winW / Math.max(r.limit, 1);
+      for (let i = 0; i < Math.min(r.count, 40); i++) {
+        const dx = winX + 10 + (i % 20) * (winW / 21);
+        const dy = barY + 20 + Math.floor(i / 20) * 25;
+        vizSvg.appendChild(svgEl('circle', { cx: dx, cy: dy, r: 7, fill: i < r.limit ? success : danger, opacity: 0.7 }));
+      }
+      // Counter
+      const cl = svgEl('text', { x: 400, y: barY - 20, 'text-anchor': 'middle', fill: muted, 'font-size': 15, 'font-weight': 600, 'font-family': 'var(--font-body)' });
+      cl.textContent = `${r.count}/${r.limit} in window | t=${t.toFixed(0)}s`;
+      vizSvg.appendChild(cl);
+      // Result labels
+      drawResultLabels(vizSvg, r, success, danger, 340);
+      drawProgressBar(vizSvg, muted, border);
+    }
+
+    function drawLiveFixedWindow(r, t, accent, success, danger, muted, border) {
+      const bx = 100, bw = 600, by2 = 120, barH = 200;
+      // Window segments
+      const dur = Number($('simDuration').value) || 15;
+      const nWins = Math.ceil(dur / r.winSize);
+      const segW = bw / nWins;
+      for (let i = 0; i < nWins; i++) {
+        const x = bx + i * segW;
+        const isActive = Math.floor(t / r.winSize) === i;
+        vizSvg.appendChild(svgEl('rect', { x: x + 2, y: by2, width: segW - 4, height: barH, rx: 8, fill: isActive ? accent : border, opacity: isActive ? 0.15 : 0.06 }));
+        // Fill bar for current
+        if (isActive && r.count > 0) {
+          const fh = barH * Math.min(r.count / r.limit, 1);
+          vizSvg.appendChild(svgEl('rect', { x: x + 6, y: by2 + barH - fh, width: segW - 12, height: fh, rx: 6, fill: r.count >= r.limit ? danger : success, opacity: 0.4 }));
+        }
+        // Window label
+        const wl = svgEl('text', { x: x + segW / 2, y: by2 + barH + 20, 'text-anchor': 'middle', fill: muted, 'font-size': 11, 'font-family': 'var(--font-body)' });
+        wl.textContent = `W${i + 1}`;
+        vizSvg.appendChild(wl);
+        if (isActive) {
+          vizSvg.appendChild(svgEl('rect', { x: x + 2, y: by2, width: segW - 4, height: barH, rx: 8, fill: 'none', stroke: accent, 'stroke-width': 2 }));
+        }
+      }
+      // Limit line
+      vizSvg.appendChild(svgEl('line', { x1: bx, y1: by2 + 4, x2: bx + bw, y2: by2 + 4, stroke: danger, 'stroke-width': 1, 'stroke-dasharray': '4 3', opacity: 0.5 }));
+      const ll = svgEl('text', { x: bx + bw + 5, y: by2 + 8, fill: danger, 'font-size': 11, 'font-family': 'var(--font-body)', opacity: 0.7 });
+      ll.textContent = `limit: ${r.limit}`;
+      vizSvg.appendChild(ll);
+      // Counter
+      const cl = svgEl('text', { x: 400, y: by2 - 15, 'text-anchor': 'middle', fill: muted, 'font-size': 15, 'font-weight': 600, 'font-family': 'var(--font-body)' });
+      cl.textContent = `Window ${Math.floor(t / r.winSize) + 1}: ${r.count}/${r.limit} | t=${t.toFixed(0)}s`;
+      vizSvg.appendChild(cl);
+      drawResultLabels(vizSvg, r, success, danger, 400);
+      drawProgressBar(vizSvg, muted, border);
+    }
+
+    function drawLiveLeakyBucket(r, accent, success, danger, muted, border) {
+      const bx = 300, by = 50, bw = 200, bh = 280, cap = r.capacity;
+      const fillRatio = Math.max(0, Math.min(1, r.queue / cap));
+      // Bucket
+      vizSvg.appendChild(svgEl('rect', { x: bx, y: by, width: bw, height: bh, rx: 18, fill: 'none', stroke: border, 'stroke-width': 2.5 }));
+      // Water fill
+      const waterH = bh * fillRatio;
+      if (waterH > 1) {
+        vizSvg.appendChild(svgEl('rect', { x: bx + 4, y: by + bh - waterH, width: bw - 8, height: waterH - 4 > 0 ? waterH - 4 : 1, rx: 14, fill: '#3b82f6', opacity: 0.25 }));
+        // Wave
+        let wavePath = `M ${bx + 4} ${by + bh - waterH}`;
+        for (let x = 0; x <= bw - 8; x += 4) {
+          wavePath += ` L ${bx + 4 + x} ${by + bh - waterH + Math.sin(x * 0.1 + Date.now() * 0.004) * 3}`;
+        }
+        vizSvg.appendChild(svgEl('path', { d: wavePath, fill: 'none', stroke: '#3b82f6', 'stroke-width': 2, opacity: 0.4 }));
+      }
+      // Leak hole
+      vizSvg.appendChild(svgEl('ellipse', { cx: 400, cy: by + bh + 4, rx: 14, ry: 6, fill: border }));
+      // Drips
+      const dripsN = Math.min(r.leaked, 5);
+      for (let i = 0; i < dripsN; i++) {
+        const dy = by + bh + 18 + i * 18;
+        const o = 0.5 - i * 0.1;
+        vizSvg.appendChild(svgEl('circle', { cx: 400 + Math.sin(i + Date.now() * 0.002) * 3, cy: dy, r: 4, fill: accent, opacity: o > 0.1 ? o : 0.1 }));
+      }
+      // Label
+      const lbl = svgEl('text', { x: 400, y: by - 12, 'text-anchor': 'middle', fill: muted, 'font-size': 15, 'font-weight': 600, 'font-family': 'var(--font-body)' });
+      lbl.textContent = `Queue: ${Math.round(r.queue)}/${cap} | Leak: ${r.leaked}/s`;
+      vizSvg.appendChild(lbl);
+      drawResultLabels(vizSvg, r, success, danger, 340);
+      drawProgressBar(vizSvg, muted, border);
+    }
+
+    function drawResultLabels(svg, r, success, danger, y) {
+      if (r.allowed > 0) {
+        const g = svgEl('text', { x: 650, y: y, 'text-anchor': 'middle', fill: success, 'font-size': 22, 'font-weight': 800, 'font-family': 'var(--font-body)' });
+        g.textContent = `✓ ${r.allowed}`;
+        svg.appendChild(g);
+      }
+      if (r.rejected > 0) {
+        const r2 = svgEl('text', { x: 150, y: y, 'text-anchor': 'middle', fill: danger, 'font-size': 22, 'font-weight': 800, 'font-family': 'var(--font-body)' });
+        r2.textContent = `✗ ${r.rejected}`;
+        svg.appendChild(r2);
+      }
+    }
+
+    function drawProgressBar(svg, muted, border) {
+      if (!S.running) return;
+      const dur = Number($('simDuration').value) || 15;
+      const elapsed = S.history.length;
+      const pct = Math.min(elapsed / dur, 1);
+      svg.appendChild(svgEl('rect', { x: 100, y: 432, width: 600, height: 6, rx: 3, fill: border }));
+      svg.appendChild(svgEl('rect', { x: 100, y: 432, width: 600 * pct, height: 6, rx: 3, fill: cssVar('--accent') || '#0d9488' }));
+    }
+
+    /* ===========================================================
+       TIMELINE CHART
+       =========================================================== */
+    function drawTimeline() {
+      clearSvg(timelineChart);
+      if (S.history.length === 0) return;
+      const W = 800, H = 180, pad = 40;
+      const maxVal = Math.max(1, ...S.history.map(h => Math.max(h.allowed, h.rejected)));
+      const barW = Math.max(4, (W - pad * 2) / S.history.length - 2);
+      const success = cssVar('--success') || '#10b981';
+      const danger = cssVar('--danger') || '#ef4444';
+      const muted = cssVar('--text-muted') || '#94a3b8';
+      const border = cssVar('--border') || '#e2e8f0';
+      // Axes
+      timelineChart.appendChild(svgEl('line', { x1: pad, y1: H - 25, x2: W - pad, y2: H - 25, stroke: border, 'stroke-width': 1 }));
+      S.history.forEach((h, i) => {
+        const x = pad + i * ((W - pad * 2) / S.history.length);
+        const aH = (h.allowed / maxVal) * (H - 50);
+        const rH = (h.rejected / maxVal) * (H - 50);
+        // Allowed bar
+        timelineChart.appendChild(svgEl('rect', { x: x, y: H - 25 - aH, width: barW * 0.45, height: aH, rx: 2, fill: success, opacity: 0.7 }));
+        // Rejected bar
+        timelineChart.appendChild(svgEl('rect', { x: x + barW * 0.5, y: H - 25 - rH, width: barW * 0.45, height: rH, rx: 2, fill: danger, opacity: 0.7 }));
+        // Time label every few steps
+        if (i % Math.ceil(S.history.length / 10) === 0) {
+          const tl = svgEl('text', { x: x + barW / 2, y: H - 8, 'text-anchor': 'middle', fill: muted, 'font-size': 10, 'font-family': 'var(--font-body)' });
+          tl.textContent = `${h.t}s`;
+          timelineChart.appendChild(tl);
+        }
+      });
+      // Legend
+      timelineChart.appendChild(svgEl('rect', { x: W - 160, y: 8, width: 10, height: 10, rx: 2, fill: success }));
+      const l1 = svgEl('text', { x: W - 145, y: 17, fill: muted, 'font-size': 11, 'font-family': 'var(--font-body)' });
+      l1.textContent = 'Allowed';
+      timelineChart.appendChild(l1);
+      timelineChart.appendChild(svgEl('rect', { x: W - 90, y: 8, width: 10, height: 10, rx: 2, fill: danger }));
+      const l2 = svgEl('text', { x: W - 75, y: 17, fill: muted, 'font-size': 11, 'font-family': 'var(--font-body)' });
+      l2.textContent = 'Rejected';
+      timelineChart.appendChild(l2);
+    }
+
+    /* ===========================================================
+       STATS UPDATE
+       =========================================================== */
+    function updateStats() {
+      $('statTotal').textContent = S.stats.total;
+      $('statAllowed').textContent = S.stats.allowed;
+      $('statRejected').textContent = S.stats.rejected;
+      const pct = S.stats.total > 0 ? Math.round(S.stats.allowed / S.stats.total * 100) : 0;
+      $('statPercent').textContent = pct + '%';
+    }
+
+    /* ===========================================================
+       RUN SIMULATION
+       =========================================================== */
+    function runSim() {
+      if (S.running) return;
+      resetSim();
+      S.running = true;
+      $('runBtnText').textContent = '⏳ Running...';
+      $('runBtn').disabled = true;
+
+      const dur = Number($('simDuration').value) || 15;
+      const rps = Number($('reqRate').value) || 20;
+      const pattern = $('trafficPattern').value;
+
+      // Init algo state
+      if (S.algo === 'token-bucket') S.bucketLevel = Number($('tbCapacity').value) || 20;
+      if (S.algo === 'sliding-window') S.windowReqs = [];
+      if (S.algo === 'fixed-window') { S._fwCount = 0; S._fwStart = 0; }
+      if (S.algo === 'leaky-bucket') S.leakQueue = 0;
+
+      let t = 0;
+      S.simTimer = setInterval(() => {
+        if (t >= dur) { stopSim(); return; }
+        const nReqs = genTraffic(pattern, rps, t, dur);
+        let result;
+        switch (S.algo) {
+          case 'token-bucket': result = simStep_tokenBucket(nReqs); break;
+          case 'sliding-window': result = simStep_slidingWindow(nReqs, t); break;
+          case 'fixed-window': result = simStep_fixedWindow(nReqs, t); break;
+          case 'leaky-bucket': result = simStep_leakyBucket(nReqs); break;
+        }
+        S.stats.total += nReqs;
+        S.stats.allowed += result.allowed;
+        S.stats.rejected += result.rejected;
+        S.history.push({ t, allowed: result.allowed, rejected: result.rejected });
+        drawLiveViz(result, t, dur);
+        drawTimeline();
+        updateStats();
+        // Pulse stats on allow
+        if (result.allowed > 0) $('statAllowed').classList.add('pulse');
+        if (result.rejected > 0) $('statRejected').classList.add('pulse');
+        setTimeout(() => { $('statAllowed').classList.remove('pulse'); $('statRejected').classList.remove('pulse'); }, 400);
+        t++;
+      }, 700);
+    }
+
+    function stopSim() {
+      S.running = false;
+      clearInterval(S.simTimer);
+      $('runBtnText').textContent = '▶ Run Simulation';
+      $('runBtn').disabled = false;
+    }
+
+    function resetSim() {
+      stopSim();
+      S.stats = { total: 0, allowed: 0, rejected: 0 };
+      S.history = [];
+      S.bucketLevel = 0; S.windowReqs = []; S.leakQueue = 0;
+      S._fwCount = 0; S._fwStart = 0;
+      updateStats();
+      clearSvg(timelineChart);
+      drawIdleViz();
+    }
+
+    /* ---- Button handlers ---- */
+    $('runBtn').addEventListener('click', () => { addRipple(event, $('runBtn')); runSim(); });
+    $('resetBtn').addEventListener('click', resetSim);
+
+    /* ---- Ripple effect ---- */
+    function addRipple(e, btn) {
+      const r = document.createElement('span');
+      r.className = 'ripple';
+      const rect = btn.getBoundingClientRect();
+      r.style.left = (e.clientX - rect.left - 10) + 'px';
+      r.style.top = (e.clientY - rect.top - 10) + 'px';
+      r.style.width = r.style.height = '20px';
+      btn.appendChild(r);
+      setTimeout(() => r.remove(), 600);
+    }
+
+    /* ===========================================================
+       CODE SNIPPETS
+       =========================================================== */
+    const SNIPPETS = {
+      nginx: `# Nginx Rate Limiting Configuration
+# Limits each IP to 10 requests/second with burst of 20
+http {
+    limit_req_zone $binary_remote_addr
+        zone=api_limit:10m rate=10r/s;
+
+    server {
+        location /api/ {
+            limit_req zone=api_limit
+                burst=20 nodelay;
+            limit_req_status 429;
+        }
+    }
+}`,
+      express: `// Express.js Rate Limiting with express-rate-limit
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,                  // limit per window per IP
+  standardHeaders: true,     // RateLimit-* headers
+  legacyHeaders: false,
+  message: {
+    error: 'Too many requests, please try again later.'
+  }
+});
+
+app.use('/api/', limiter);`,
+      cloudflare: `// Cloudflare Workers Rate Limiting
+export default {
+  async fetch(request, env) {
+    const ip = request.headers.get('CF-Connecting-IP');
+    const key = \`rl:\${ip}\`;
+    const { success } = await env.RATE_LIMITER.limit({
+      key,
+    });
+    if (!success) {
+      return new Response('Rate limit exceeded', {
+        status: 429,
+        headers: { 'Retry-After': '60' }
+      });
+    }
+    return fetch(request);
+  }
+};`
+    };
+
+    function showSnippet(lang) {
+      $('snippetCode').textContent = SNIPPETS[lang] || '';
+    }
+
+    document.querySelectorAll('[data-snippet]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-snippet]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        showSnippet(btn.dataset.snippet);
+      });
+    });
+
+    $('copySnippetBtn').addEventListener('click', () => {
+      const text = $('snippetCode').textContent;
+      navigator.clipboard?.writeText(text).then(() => {
+        $('copySnippetBtn').textContent = '✓ Copied!';
+        setTimeout(() => { $('copySnippetBtn').textContent = 'Copy'; }, 1500);
+      }).catch(() => {
+        // Fallback for offline/older browsers
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta);
+        ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        $('copySnippetBtn').textContent = '✓ Copied!';
+        setTimeout(() => { $('copySnippetBtn').textContent = 'Copy'; }, 1500);
+      });
+    });
+
+    /* ===========================================================
+       FAQ
+       =========================================================== */
+    const FAQ_DATA = [
+      { q: 'What is rate limiting?', a: 'Rate limiting is a technique used to control the number of requests a client can make to a server within a given time window. It protects APIs and services from abuse, brute-force attacks, and resource exhaustion.' },
+      { q: 'What is a Token Bucket algorithm?', a: 'The Token Bucket algorithm uses a bucket that fills with tokens at a steady rate. Each request consumes a token. When the bucket is empty, requests are rejected. The bucket has a maximum capacity allowing short bursts of traffic.' },
+      { q: 'What is the difference between Token Bucket and Leaky Bucket?', a: 'Token Bucket allows bursts up to the bucket capacity and then limits to the refill rate. Leaky Bucket processes requests at a constant rate regardless of input, smoothing out bursts entirely. Token Bucket is more permissive for bursty traffic.' },
+      { q: 'How does Sliding Window rate limiting work?', a: 'Sliding Window tracks requests in a continuously moving time window. Unlike Fixed Window, it avoids the boundary problem where a user could make double the allowed requests at the boundary between two windows.' },
+      { q: 'What is Fixed Window rate limiting?', a: 'Fixed Window divides time into discrete intervals (e.g. 1-second windows) and counts requests per window. When the count exceeds the limit the remaining requests in that window are rejected. It resets at each window boundary.' },
+      { q: 'Why is rate limiting important for API security?', a: 'Rate limiting prevents denial-of-service attacks, brute-force login attempts, web scraping abuse, and resource exhaustion. It ensures fair usage across clients and protects backend infrastructure from overload.' },
+      { q: 'Can I use this tool offline?', a: 'Yes. This tool is a standalone HTML file with zero external dependencies for core functionality. Fonts gracefully fall back to system fonts when offline. You can save it to a USB drive and run it anywhere.' },
+      { q: 'Which rate limiting algorithm should I use?', a: 'Token Bucket is ideal for APIs that need to allow occasional bursts. Sliding Window is best for precise, fair limiting. Fixed Window is simplest to implement. Leaky Bucket is perfect for smoothing traffic to a constant rate, such as message queues.' },
+    ];
+
+    function buildFAQ() {
+      const grid = $('faqGrid');
+      grid.innerHTML = FAQ_DATA.map((item, i) =>
+        `<div class="faq-item" data-faq="${i}">` +
+        `<button class="faq-q" aria-expanded="false" aria-controls="faq-a-${i}">${item.q}<span class="chevron" aria-hidden="true">▼</span></button>` +
+        `<div class="faq-a" id="faq-a-${i}" role="region">${item.a}</div></div>`
+      ).join('');
+
+      grid.addEventListener('click', e => {
+        const item = e.target.closest('.faq-item');
+        if (!item) return;
+        const isOpen = item.classList.contains('open');
+        // Close all
+        grid.querySelectorAll('.faq-item').forEach(fi => { fi.classList.remove('open'); fi.querySelector('.faq-q').setAttribute('aria-expanded', 'false'); });
+        if (!isOpen) { item.classList.add('open'); item.querySelector('.faq-q').setAttribute('aria-expanded', 'true'); }
+      });
+    }
+
+    /* ===========================================================
+       INITIALISE
+       =========================================================== */
+    (function init() {
+      renderAlgoFields();
+      renderAlgoDesc();
+      drawIdleViz();
+      showSnippet('nginx');
+      buildFAQ();
+      updateStats();
+    })();
   </script>
 </body>
+
 </html>

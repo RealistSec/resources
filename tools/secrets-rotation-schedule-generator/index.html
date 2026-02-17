@@ -1,71 +1,1391 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Secrets Rotation Schedule Generator</title>
+  <title>Secrets Rotation Schedule Generator | RealistSec</title>
+  <meta name="description"
+    content="Generate secure rotation schedules for API keys, passwords, and certificates. Calculate overlap windows, assess risk scores, and ensure compliance with SOC2, PCI DSS, and more.">
+  <meta name="keywords"
+    content="secrets rotation, security schedule, api key rotation, password policy, soc2 compliance, pci dss, devsecops tool">
+  <meta name="author" content="RealistSec">
+  <meta property="og:title" content="Secrets Rotation Schedule Generator">
+  <meta property="og:description"
+    content="Free tool to plan secure secret rotations with overlap windows and risk analysis.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://RealistSec.com/resources/secrets-rotation-schedule-generator">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://RealistSec.com/resources/secrets-rotation-schedule-generator">
+
+  <!-- Fonts: Outfit (Headings) & DM Sans (Body) with system fallback -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;500;600&family=Outfit:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
   <style>
-    :root { color-scheme: light dark; --bg:#0c1326; --panel:#121b30; --text:#e5e7eb; --muted:#94a3b8; --accent:#f472b6; }
-    body { margin:0; font-family:'Inter',system-ui; background:linear-gradient(135deg,#0c1326 20%,#10172a 60%); color:var(--text); min-height:100vh; }
-    header { padding:22px 30px; border-bottom:1px solid #1f2937; display:flex; justify-content:space-between; gap:12px; align-items:center; }
-    h1 { margin:0; font-size:clamp(24px,4vw,32px); }
-    main { padding:22px 30px 40px; display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:16px; }
-    .card { background:rgba(255,255,255,0.03); border:1px solid #1f2937; border-radius:14px; padding:16px; box-shadow:0 14px 32px rgba(0,0,0,0.3); }
-    label { display:block; margin:8px 0 6px; font-weight:600; color:var(--muted); }
-    select, input { width:100%; padding:12px; border-radius:12px; border:1px solid #1f2937; background:#0b1224; color:var(--text); box-sizing:border-box; }
-    button { margin-top:12px; width:100%; padding:12px; border:none; border-radius:12px; background:linear-gradient(90deg,#f472b6,#8b5cf6); color:#0b1224; font-weight:800; cursor:pointer; }
-    ul { padding-left:18px; margin:0; }
+    /* Design System & Variables */
+    :root {
+      --primary: #0f172a;
+      --primary-light: #1e293b;
+      --accent: #0ea5e9;
+      /* Sky blue */
+      --accent-glow: rgba(14, 165, 233, 0.3);
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+      --neutral: #64748b;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --border: #e2e8f0;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --font-head: 'Outfit', system-ui, -apple-system, sans-serif;
+      --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="dark"] {
+      --primary: #f8fafc;
+      --primary-light: #e2e8f0;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.3);
+      --danger: #f87171;
+      --warning: #fbbf24;
+      --success: #34d399;
+      --neutral: #94a3b8;
+      --text-main: #f1f5f9;
+      --text-muted: #cbd5e1;
+      --bg-page: #0f172a;
+      --bg-card: #1e293b;
+      --border: #334155;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Reset & Base */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.6;
+      overflow-x: hidden;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Layout */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header */
+    header {
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-card);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(8px);
+    }
+
+    .header-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 56px;
+      /* Reduced from 70px */
+    }
+
+    .brand {
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-main);
+      text-decoration: none;
+    }
+
+    .brand img {
+      height: 28px;
+      width: auto;
+    }
+
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .theme-toggle:hover {
+      background: var(--bg-page);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* Hero */
+    .hero {
+      padding: 30px 0 20px;
+      /* Reduced padding */
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero h1 {
+      font-family: var(--font-head);
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      /* Reduced size */
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, var(--text-main) 30%, var(--neutral) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Hero Animation */
+    .hero-visual {
+      margin: 10px auto 16px;
+      /* Reduced margins */
+      width: 80px;
+      /* Smaller icon */
+      height: 80px;
+      position: relative;
+    }
+
+    @keyframes floating {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+
+    @keyframes spin-slow {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .shield-icon {
+      width: 100%;
+      height: 100%;
+      animation: floating 4s ease-in-out infinite;
+      filter: drop-shadow(0 10px 15px var(--accent-glow));
+    }
+
+    /* Main Grid */
+    .app-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 24px;
+      padding-bottom: 60px;
+    }
+
+    @media (max-width: 900px) {
+      .app-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Forms */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    select,
+    input[type="number"],
+    input[type="date"] {
+      width: 100%;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--bg-page);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      font-size: 1rem;
+      transition: var(--transition);
+    }
+
+    select:focus,
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* Custom Range Slider */
+    .range-wrapper {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      height: 6px;
+      background: var(--border);
+      border-radius: 4px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid var(--bg-card);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: var(--radius);
+      font-weight: 600;
+      font-family: var(--font-head);
+      cursor: pointer;
+      transition: var(--transition);
+      border: none;
+      font-size: 1rem;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: var(--text-main);
+      /* Inverted for high contrast usually, or use accent */
+      background: linear-gradient(135deg, var(--accent), #3b82f6);
+      color: white;
+      box-shadow: 0 4px 6px rgba(14, 165, 233, 0.25);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 12px rgba(14, 165, 233, 0.3);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--text-main);
+      background: var(--bg-page);
+    }
+
+    /* Timeline / Visuals */
+    .timeline-container {
+      overflow-x: auto;
+      padding-bottom: 12px;
+      margin-bottom: 24px;
+    }
+
+    .timeline-svg {
+      width: 100%;
+      min-width: 500px;
+      height: 180px;
+      background: var(--bg-page);
+      /* Inner background for chart */
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+
+    /* Schedule List */
+    .schedule-list {
+      list-style: none;
+      counter-reset: step;
+    }
+
+    .schedule-item {
+      position: relative;
+      padding-left: 40px;
+      margin-bottom: 16px;
+    }
+
+    .schedule-item::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 28px;
+      height: 28px;
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--accent);
+    }
+
+    .schedule-item::after {
+      /* Connecting line */
+      content: '';
+      position: absolute;
+      left: 14px;
+      top: 30px;
+      bottom: -18px;
+      width: 1px;
+      background: var(--border);
+    }
+
+    .schedule-item:last-child::after {
+      display: none;
+    }
+
+    .schedule-date {
+      font-weight: 700;
+      color: var(--text-main);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .schedule-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .badge-rotate {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+    }
+
+    .badge-revoke {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+    }
+
+    .badge-overlap {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+    }
+
+    /* Stats / Risk */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-box {
+      background: var(--bg-page);
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+
+    .stat-val {
+      font-size: 1.5rem;
+      font-weight: 700;
+      font-family: var(--font-head);
+      color: var(--text-main);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .risk-meter {
+      height: 12px;
+      background: var(--border);
+      border-radius: 6px;
+      margin: 10px 0;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .risk-fill {
+      height: 100%;
+      width: 0%;
+      transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border-radius: 6px;
+    }
+
+    .risk-low {
+      background: var(--success);
+    }
+
+    .risk-med {
+      background: var(--warning);
+    }
+
+    .risk-high {
+      background: var(--danger);
+    }
+
+    /* FAQ */
+    .faq-section {
+      max-width: 800px;
+      margin: 40px auto;
+    }
+
+    .faq-item {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .faq-question {
+      width: 100%;
+      text-align: left;
+      padding: 16px 0;
+      background: none;
+      border: none;
+      font-family: var(--font-head);
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .faq-question::after {
+      content: '+';
+      font-size: 1.5rem;
+      font-weight: 300;
+      transition: transform 0.2s;
+    }
+
+    .faq-item.active .faq-question::after {
+      transform: rotate(45deg);
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      color: var(--text-muted);
+      padding-right: 20px;
+    }
+
+    .faq-answer p {
+      padding-bottom: 16px;
+    }
+
+    /* Footer */
+    .site-footer {
+      margin-top: 48px;
+      padding: 32px 0;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      background: var(--bg-card);
+    }
+
+    .site-footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .site-footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Calendar Dropdown */
+    .dropdown {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: var(--bg-card);
+      min-width: 200px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      z-index: 10;
+      bottom: 100%;
+      /* Show above button */
+      left: 0;
+      margin-bottom: 8px;
+    }
+
+    .dropdown:hover .dropdown-content {
+      display: block;
+    }
+
+    .dropdown-content a {
+      color: var(--text-main);
+      padding: 12px 16px;
+      text-decoration: none;
+      display: block;
+      font-size: 0.9rem;
+      transition: var(--transition);
+    }
+
+    .dropdown-content a:hover {
+      background-color: var(--bg-page);
+      color: var(--accent);
+    }
+
+    /* Utilities */
+    .hidden {
+      display: none !important;
+    }
+
+    .flex-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    /* Micro-interactions */
+    @media (prefers-reduced-motion: no-preference) {
+
+      .btn,
+      .card {
+        transition: var(--transition);
+      }
+    }
   </style>
 </head>
+
 <body>
+
   <header>
-    <div>
-      <h1>Secrets Rotation Schedule Generator</h1>
-      <p style="margin:6px 0 0;color:var(--muted);">Create rotation cadence and overlap windows for different secret types.</p>
+    <div class="container header-inner">
+      <a href="https://RealistSec.com" class="brand">
+        <img src="../../shared/images/realistSecLogoTransparent2.png" alt="RealistSec Logo" class="brand-logo">
+        RealistSec
+      </a>
+      <div class="flex-row" style="align-items:center;">
+        <span class="badge badge-rotate"
+          style="margin-right:8px; display:none; @media(min-width:600px){display:inline-block;}">v1.1.0</span>
+        <button class="theme-toggle" id="themeBtn" aria-label="Toggle dark mode">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+      </div>
     </div>
-    <div style="padding:8px 12px;border:1px solid #1f2937;border-radius:10px;">Offline · Static</div>
   </header>
 
-  <main>
-    <section class="card">
-      <label for="type">Secret type</label>
-      <select id="type">
-        <option value="API key">API key</option>
-        <option value="DB password">DB password</option>
-        <option value="TLS cert">TLS certificate</option>
-      </select>
-      <label for="env">Environment</label>
-      <select id="env">
-        <option>production</option>
-        <option>staging</option>
-        <option>development</option>
-      </select>
-      <label for="overlap">Overlap days (dual validity)</label>
-      <input id="overlap" type="number" value="3" />
-      <button onclick="generate()">Generate schedule</button>
-    </section>
-    <section class="card">
-      <h2 style="margin-top:0;">Schedule</h2>
-      <ul id="list"></ul>
+  <div class="hero">
+    <div class="container">
+      <div class="hero-visual">
+        <!-- Inline SVG Animation -->
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="shield-icon">
+          <defs>
+            <linearGradient id="shieldGrad" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="var(--accent)" />
+              <stop offset="1" stop-color="#3b82f6" />
+            </linearGradient>
+          </defs>
+          <path d="M50 95C50 95 85 80 85 40V15L50 5L15 15V40C15 80 50 95 50 95Z" fill="url(#shieldGrad)" opacity="0.1"
+            stroke="url(#shieldGrad)" stroke-width="2" />
+          <g style="animation: spin-slow 10s linear infinite; transform-origin: 50px 50px;">
+            <circle cx="50" cy="50" r="28" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 4"
+              opacity="0.6" />
+          </g>
+          <path d="M50 35V65M35 50H65" stroke="var(--text-main)" stroke-width="2" stroke-linecap="round" />
+          <rect x="42" y="42" width="16" height="16" rx="4" fill="var(--bg-card)" stroke="var(--text-main)"
+            stroke-width="2" />
+        </svg>
+      </div>
+      <h1>Secrets Rotation Schedule Generator</h1>
+      <p>Generate secure, compliance-ready rotation schedules for valid credentials.</p>
+    </div>
+  </div>
+
+  <main class="container">
+    <div class="app-grid">
+      <!-- Configuration Panel -->
+      <section class="card">
+        <div class="card-header">
+          <span class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            Configuration
+          </span>
+          <span class="badge badge-rotate" id="modeBadge">Offline Mode</span>
+        </div>
+
+        <form id="configForm" onsubmit="return false;">
+          <div class="form-group">
+            <label for="secretType">Secret Type</label>
+            <select id="secretType" onchange="updateDefaults()">
+              <option value="api_key">API Key</option>
+              <option value="db_password">Database Password</option>
+              <option value="tls_cert">TLS/SSL Certificate</option>
+              <option value="ssh_key">SSH Key pair</option>
+              <option value="oauth_token">OAuth Refresh Token</option>
+              <option value="service_account">Service Account Key</option>
+              <option value="encryption_key">Encryption Key (KMS)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="environment">Environment</label>
+            <select id="environment">
+              <option value="production">Production (High Risk)</option>
+              <option value="staging">Staging</option>
+              <option value="development">Development</option>
+              <option value="cicd">CI/CD Pipeline</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="compliance">Compliance Framework</label>
+            <select id="compliance" onchange="applyCompliance()">
+              <option value="custom">Custom Policy</option>
+              <option value="soc2">SOC 2 (Annual/Quarterly)</option>
+              <option value="pci">PCI DSS (90 Days)</option>
+              <option value="nist">NIST (Risk-Based)</option>
+              <option value="iso">ISO 27001</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div class="range-wrapper">
+              <label for="cadence">Rotation Cadence (Days)</label>
+              <span id="cadenceVal" style="font-weight:700; color:var(--accent);">90</span>
+            </div>
+            <input type="range" id="cadence" min="1" max="365" value="90"
+              oninput="document.getElementById('cadenceVal').innerText = this.value">
+          </div>
+
+          <div class="form-group">
+            <div class="range-wrapper">
+              <label for="overlap" title="Period where both old and new secrets are valid">Overlap Window
+                (Hours)</label>
+              <span id="overlapVal" style="font-weight:700; color:var(--accent);">24</span>
+            </div>
+            <input type="range" id="overlap" min="0" max="168" value="24"
+              oninput="document.getElementById('overlapVal').innerText = this.value">
+            <small style="color:var(--text-muted); font-size:0.8rem; display:block; margin-top:4px;">Allow time for
+              propagation and rollback.</small>
+          </div>
+
+          <div class="form-group">
+            <label for="startDate">Start Date</label>
+            <input type="date" id="startDate">
+          </div>
+
+          <button type="submit" class="btn btn-primary" onclick="generateSchedule()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+              <polyline points="9 11 12 14 22 4"></polyline>
+            </svg>
+            Generate Schedule
+          </button>
+
+          <div class="dropdown">
+            <button type="button" class="btn btn-outline">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              Add to Calendar
+            </button>
+            <div class="dropdown-content">
+              <a href="#" onclick="downloadICS(); return false;">Download .ICS File</a>
+              <a href="#" target="_blank" id="btnGoogleCal">Google Calendar</a>
+              <a href="#" target="_blank" id="btnOutlook">Outlook (Live/Hotmail)</a>
+              <a href="#" target="_blank" id="btnOffice365">Microsoft 365</a>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-outline" style="margin-top:12px;" onclick="exportData()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export JSON
+          </button>
+        </form>
+
+        <div style="margin-top:30px;">
+          <h4 style="margin-bottom:12px; font-family:var(--font-head);">Risk Analysis</h4>
+          <div class="stat-box" style="text-align:left; border:none; background:var(--bg-page); padding:12px;">
+            <div class="flex-row" style="justify-content:space-between; margin-bottom:6px;">
+              <span class="stat-label">Risk Score</span>
+              <span class="stat-val" style="font-size:1rem;" id="riskScore">Low</span>
+            </div>
+            <div class="risk-meter">
+              <div class="risk-fill risk-low" id="riskBar" style="width: 25%;"></div>
+            </div>
+            <p id="riskMsg" style="font-size:0.85rem; color:var(--text-muted); margin-top:8px;">Frequency is adequate
+              for this secret type.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Output Panel -->
+      <section class="card">
+        <div class="card-header">
+          <span class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Rotation Schedule
+          </span>
+          <div id="nextRotation" style="font-size:0.9rem; font-weight:600; color:var(--accent);"></div>
+        </div>
+
+        <!-- Timeline Visual -->
+        <div class="timeline-container">
+          <h4 style="margin-bottom:10px; font-size:0.9rem; color:var(--text-muted);">Visual Timeline (Next 3 Cycles)
+          </h4>
+          <svg id="ganttChart" class="timeline-svg" preserveAspectRatio="none">
+            <!-- SVG Gantt Content injected via JS -->
+          </svg>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-val" id="rotationsPerYear">4</div>
+            <div class="stat-label">Rotations / Year</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="totalOverlap">96h</div>
+            <div class="stat-label">Total Overlap Time</div>
+          </div>
+        </div>
+
+        <h3 style="margin:20px 0 12px; font-family:var(--font-head); font-size:1.1rem;">Execution Steps</h3>
+        <ul class="schedule-list" id="scheduleSteps">
+          <!-- Populated by JS -->
+          <li class="schedule-item">
+            <span class="schedule-date">Select configuration...</span>
+            <span class="schedule-desc">Configure your secret type and cadence on the left to generate a plan.</span>
+          </li>
+        </ul>
+      </section>
+    </div>
+
+    <!-- FAQ Section for SEO -->
+    <section class="faq-section" itemscope itemtype="https://schema.org/FAQPage">
+      <h2 style="text-align:center; margin-bottom:30px; font-family:var(--font-head);">Frequently Asked Questions</h2>
+
+      <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <button class="faq-question" itemprop="name">Why is rotation overlap important?</button>
+        <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+          <p itemprop="text">Overlap allows both the old and new secrets to be valid simultaneously for a short period.
+            This prevents downtime during propagation and allows for instant rollback if the new secret fails.</p>
+        </div>
+      </div>
+
+      <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <button class="faq-question" itemprop="name">What is the recommended rotation cadence for API keys?</button>
+        <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+          <p itemprop="text">For high-security production environments, 90 days is standard (PCI DSS). For highly
+            sensitive keys, shorter windows like 30 days are better. Ideally, use automated, short-lived tokens instead
+            of long-lived keys.</p>
+        </div>
+      </div>
+
+      <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <button class="faq-question" itemprop="name">How does this tool help with SOC 2 compliance?</button>
+        <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+          <p itemprop="text">SOC 2 requires organizations to have procedures for managing credentials. This tool
+            generates a documented schedule and procedure for rotating secrets, demonstrating structured management of
+            sensitive access.</p>
+        </div>
+      </div>
+
+      <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <button class="faq-question" itemprop="name">Does this tool store my secrets?</button>
+        <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+          <p itemprop="text">No. This tool is a static generator for <em>schedules</em> and <em>plans</em>. It runs
+            entirely in your browser (client-side) and does not transmit data. It never asks for or handles actual
+            secret values.</p>
+        </div>
+      </div>
     </section>
   </main>
 
-  <script>
-    const cadences = { 'API key': 30, 'DB password': 60, 'TLS cert': 90 };
-    function generate() {
-      const type = document.getElementById('type').value;
-      const env = document.getElementById('env').value;
-      const overlap = Number(document.getElementById('overlap').value) || 0;
-      const cadence = cadences[type] || 30;
-      const steps = [
-        `Rotate every ${cadence} days (${type}).`,
-        `Start overlap ${overlap} day(s) before cutover.`,
-        `Keep previous secret valid during overlap for rollback.`,
-        `After cutover, revoke old secret after ${overlap} day(s).`,
-        `Environment: ${env}.`];
-      document.getElementById('list').innerHTML = steps.map(s => `<li>${s}</li>`).join('');
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="year">2026</span> <a href="https://RealistSec.com" target="_blank"
+          rel="noopener">RealistSec</a>.
+        Free resource for the security community.</p>
+      <p style="margin-top:8px; opacity:0.6;">Securely planned. Locally processed.</p>
+    </div>
+  </footer>
+
+  <!-- Breadcrumb JSON-LD -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [{
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Resources",
+        "item": "https://RealistSec.com/resources"
+      },{
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Tools",
+        "item": "https://RealistSec.com/resources/tools"
+      },{
+        "@type": "ListItem",
+        "position": 3,
+        "name": "Secrets Rotation Generator"
+      }]
     }
-    generate();
+    </script>
+
+  <!-- Application Logic -->
+  <script>
+    // --- State Management ---
+    const state = {
+      secretType: 'api_key',
+      env: 'production',
+      cadence: 90,
+      overlapHours: 24,
+      startDate: new Date().toISOString().split('T')[0]
+    };
+
+    const configMap = {
+      api_key: { name: "API Key", defaultCadence: 90, riskFactor: 1 },
+      db_password: { name: "DB Password", defaultCadence: 60, riskFactor: 1.2 },
+      tls_cert: { name: "TLS Cert", defaultCadence: 365, riskFactor: 0.8 },
+      ssh_key: { name: "SSH Key", defaultCadence: 180, riskFactor: 1 },
+      oauth_token: { name: "OAuth Token", defaultCadence: 30, riskFactor: 0.5 },
+      service_account: { name: "Service Acct", defaultCadence: 90, riskFactor: 1.1 },
+      encryption_key: { name: "KMS Key", defaultCadence: 365, riskFactor: 0.9 }
+    };
+
+    const complianceMap = {
+      pci: { cadence: 90, name: "PCI DSS Requirement 8.2.4" },
+      soc2: { cadence: 90, name: "SOC 2 Common Criteria" }, /* Generally 90 is safe bet */
+      nist: { cadence: 60, name: "NIST Suggestion" },
+      iso: { cadence: 180, name: "ISO 27001 Policy" }
+    };
+
+    // --- Init ---
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('year').textContent = new Date().getFullYear();
+      document.getElementById('startDate').value = state.startDate;
+
+      // Theme setup
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+
+      // FAQ Accordion
+      const questions = document.querySelectorAll('.faq-question');
+      questions.forEach(q => {
+        q.addEventListener('click', () => {
+          const item = q.parentElement;
+          const isActive = item.classList.contains('active');
+          // Close all
+          document.querySelectorAll('.faq-item').forEach(i => {
+            i.classList.remove('active');
+            i.querySelector('.faq-answer').style.maxHeight = null;
+          });
+          // Open clicked if not active
+          if (!isActive) {
+            item.classList.add('active');
+            const ans = item.querySelector('.faq-answer');
+            ans.style.maxHeight = ans.scrollHeight + "px";
+          }
+        });
+      });
+
+      generateSchedule();
+    });
+
+    // --- Actions ---
+    function updateDefaults() {
+      const type = document.getElementById('secretType').value;
+      const def = configMap[type];
+      if (def) {
+        document.getElementById('cadence').value = def.defaultCadence;
+        document.getElementById('cadenceVal').innerText = def.defaultCadence;
+      }
+      generateSchedule();
+    }
+
+    function applyCompliance() {
+      const comp = document.getElementById('compliance').value;
+      if (comp !== 'custom' && complianceMap[comp]) {
+        const val = complianceMap[comp].cadence;
+        document.getElementById('cadence').value = val;
+        document.getElementById('cadenceVal').innerText = val;
+        generateSchedule();
+      }
+    }
+
+    document.getElementById('themeBtn').addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      drawGantt(); // Redraw chart for color update
+    });
+
+    function generateSchedule() {
+      // Read Inputs
+      state.secretType = document.getElementById('secretType').value;
+      state.env = document.getElementById('environment').value;
+      state.cadence = parseInt(document.getElementById('cadence').value);
+      state.overlapHours = parseInt(document.getElementById('overlap').value);
+      state.startDate = document.getElementById('startDate').value;
+
+      // Logic
+      renderTimeline();
+      renderList();
+      analyzeRisk();
+      updateCalendarLinks();
+    }
+
+    function updateCalendarLinks() {
+      // Calculate next rotation date
+      const start = new Date(state.startDate);
+      const nextRot = addDays(start, state.cadence);
+      const title = `Rotate ${configMap[state.secretType].name} (${state.env})`;
+      const details = `Planned rotation for ${configMap[state.secretType].name} in ${state.env}. Overlap window: ${state.overlapHours} hours. Generated by RealistSec Secrets Rotation Tool.`;
+
+      // Dates for Google: YYYYMMDDTHHMMSSZ (UTC)
+      const toGoogleISO = (d) => d.toISOString().replace(/-|:|\.\d\d\d/g, "");
+      const startStr = toGoogleISO(nextRot);
+      const endStr = toGoogleISO(new Date(nextRot.getTime() + 60 * 60 * 1000)); // 1 hour event
+
+      // Google
+      const googleUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startStr}/${endStr}&details=${encodeURIComponent(details)}`;
+      document.getElementById('btnGoogleCal').href = googleUrl;
+
+      // Outlook / Office 365
+      // Use full ISO string
+      const startIso = nextRot.toISOString();
+      const endIso = new Date(nextRot.getTime() + 60 * 60 * 1000).toISOString();
+
+      const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&startdt=${encodeURIComponent(startIso)}&enddt=${encodeURIComponent(endIso)}&subject=${encodeURIComponent(title)}&body=${encodeURIComponent(details)}`;
+      document.getElementById('btnOutlook').href = outlookUrl;
+
+      const office365Url = `https://outlook.office.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&startdt=${encodeURIComponent(startIso)}&enddt=${encodeURIComponent(endIso)}&subject=${encodeURIComponent(title)}&body=${encodeURIComponent(details)}`;
+      document.getElementById('btnOffice365').href = office365Url;
+    }
+
+    function downloadICS() {
+      const start = new Date(state.startDate);
+      const now = new Date().toISOString().replace(/-|:|\.\d\d\d/g, "");
+
+      let icsEvents = "";
+
+      for (let i = 0; i < 4; i++) {
+        const rotDate = addDays(start, state.cadence * (i + 1));
+        const dtStart = rotDate.toISOString().replace(/-|:|\.\d\d\d/g, "");
+        const dtEnd = new Date(rotDate.getTime() + 3600000).toISOString().replace(/-|:|\.\d\d\d/g, "");
+
+        icsEvents += `BEGIN:VEVENT
+UID:${now}-${i}@realistsec.com
+DTSTAMP:${now}
+DTSTART:${dtStart}
+DTEND:${dtEnd}
+SUMMARY:Rotate ${configMap[state.secretType].name} (${state.env})
+DESCRIPTION:Secrets rotation due. Overlap: ${state.overlapHours} hours.
+END:VEVENT
+`;
+      }
+
+      const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//RealistSec//Secrets Rotation Generator//EN
+CALSCALE:GREGORIAN
+${icsEvents}END:VCALENDAR`;
+
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `secrets-rotation.ics`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function formatDate(d) {
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function addDays(d, days) {
+      const res = new Date(d);
+      res.setDate(res.getDate() + days);
+      return res;
+    }
+
+    function renderList() {
+      const list = document.getElementById('scheduleSteps');
+      list.innerHTML = '';
+
+      const start = new Date(state.startDate);
+      const firstRot = addDays(start, state.cadence);
+      const overlapStart = new Date(firstRot);
+      // Overlap starts X hours before rotation point? Or extends after?
+      // Usually: Create New -> Overlap -> Disable Old.
+      // Let's model: Create New at Day 0 of cycle. Overlap for X. Revoke Old.
+      // Actually, "Rotation every 90 days" usually means key lifetime is 90 days.
+      // So at day 90, we need a new key. We should create it slightly before or at day 90.
+
+      // Step 1: Prep
+      const prepDate = addDays(firstRot, -1);
+
+      const steps = [
+        {
+          date: formatDate(start),
+          title: "Current Period Start",
+          desc: "Ensure current secret is active and monitored."
+        },
+        {
+          date: formatDate(prepDate),
+          title: "Preparation",
+          desc: `Generate new ${configMap[state.secretType].name}. Do not deploy yet.`
+        },
+        {
+          date: formatDate(firstRot),
+          title: "Rotation Day (Deploy New)",
+          desc: `Deploy new secret to ${state.env}. Both old and new are now valid.`,
+          badge: "Overlap Starts",
+          cls: "badge-overlap"
+        }
+      ];
+
+      // End overlap
+      const overlapEnd = new Date(firstRot.getTime() + (state.overlapHours * 60 * 60 * 1000));
+      steps.push({
+        date: formatDate(overlapEnd) + ` (${state.overlapHours}h later)`,
+        title: "Revocation (Cutover Complete)",
+        desc: "Revoke the old secret. Verify systems are stable.",
+        badge: "Revoke Old",
+        cls: "badge-revoke"
+      });
+
+      // Next
+      const nextRot = addDays(firstRot, state.cadence);
+      steps.push({
+        date: formatDate(nextRot),
+        title: "Next Rotation",
+        desc: "Cycle repeats."
+      });
+
+      // Countdowns/Stats
+      document.getElementById('rotationsPerYear').innerText = Math.round(365 / state.cadence);
+      const totalOverlapHours = Math.round(365 / state.cadence) * state.overlapHours;
+      document.getElementById('totalOverlap').innerText = totalOverlapHours + "h";
+      document.getElementById('nextRotation').innerText = "Next: " + formatDate(firstRot);
+
+      // Render
+      steps.forEach(s => {
+        const li = document.createElement('li');
+        li.className = 'schedule-item';
+        let badge = s.badge ? `<span class="badge ${s.cls}">${s.badge}</span>` : '';
+        li.innerHTML = `
+                    <span class="schedule-date">${s.date} ${badge}</span>
+                    <span class="schedule-desc">${s.desc}</span>
+                `;
+        list.appendChild(li);
+      });
+    }
+
+    function analyzeRisk() {
+      // Simple risk heuristic
+      const typeRisk = configMap[state.secretType].riskFactor;
+      const envRisk = state.env === 'production' ? 1.5 : 1;
+      // Higher cadence (more days) = Higher Risk
+      // Low cadence (few days) = Lower Risk
+      const days = state.cadence;
+
+      // Score 0-100. 100 is bad.
+      // Base score = days / 3.65 (so 365 days = 100)
+      let score = (days / 3.65) * typeRisk * envRisk;
+
+      // Adjust for overlap (too long overlap increases risk slightly due to exposure window)
+      if (state.overlapHours > 48) score += 5;
+
+      // Clamp
+      score = Math.min(Math.max(score, 5), 100);
+
+      const bar = document.getElementById('riskBar');
+      const txt = document.getElementById('riskScore');
+      const msg = document.getElementById('riskMsg');
+
+      bar.style.width = score + "%";
+      bar.className = 'risk-fill ' + (score < 40 ? 'risk-low' : (score < 75 ? 'risk-med' : 'risk-high'));
+
+      if (score < 40) {
+        txt.innerText = "Low Risk";
+        txt.style.color = "var(--success)";
+        msg.innerText = "Excellent rotation hygiene.";
+      } else if (score < 75) {
+        txt.innerText = "Medium Risk";
+        txt.style.color = "var(--warning)";
+        msg.innerText = "Standard rotation policy. Acceptable for most use cases.";
+      } else {
+        txt.innerText = "High Risk";
+        txt.style.color = "var(--danger)";
+        msg.innerText = "Rotation window is very long for this environment. Consider shortening.";
+      }
+    }
+
+    // --- Visuals ---
+    function drawGantt() {
+      renderTimeline();
+    }
+
+    function renderTimeline() {
+      const svg = document.getElementById('ganttChart');
+      svg.innerHTML = '';
+
+      const width = svg.clientWidth || 600;
+      const height = 180;
+      const padding = 20;
+
+      // We want to show 3 cycles
+      const totalDaysToShow = state.cadence * 2.5;
+      const pxPerDay = (width - padding * 2) / totalDaysToShow;
+
+      // Helper to X coord
+      const getX = (dayIndex) => padding + (dayIndex * pxPerDay);
+
+      // Colors
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const colorActive = isDark ? '#34d399' : '#10b981'; // Green
+      const colorOverlap = isDark ? '#fbbf24' : '#f59e0b'; // Amber
+      const colorLine = isDark ? '#334155' : '#e2e8f0';
+      const colorText = isDark ? '#94a3b8' : '#64748b';
+
+      // Draw Base Line
+      const yBase = 120;
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", padding);
+      line.setAttribute("y1", yBase);
+      line.setAttribute("x2", width - padding);
+      line.setAttribute("y2", yBase);
+      line.setAttribute("stroke", colorLine);
+      line.setAttribute("stroke-width", "2");
+      svg.appendChild(line);
+
+      // Draw Cycles
+      // Cycle 0 (Current) -> Cycle 1 -> Cycle 2
+      // Cycle 0 ends at day = cadence.
+      // Overlap happens at day = cadence.
+
+      const cycles = [0, 1, 2];
+      cycles.forEach(i => {
+        const startDay = i * state.cadence;
+        const endDay = (i + 1) * state.cadence;
+
+        // Bar for validity
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        const barStart = getX(startDay);
+        const barWidth = getX(endDay) - barStart;
+
+        rect.setAttribute("x", barStart);
+        rect.setAttribute("y", yBase - 20 - (i % 2) * 30); // Stagger vertically
+        rect.setAttribute("width", barWidth);
+        rect.setAttribute("height", 16);
+        rect.setAttribute("rx", 4);
+        rect.setAttribute("fill", colorActive);
+        rect.setAttribute("opacity", 0.8);
+
+        // Label
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", barStart + 5);
+        text.setAttribute("y", yBase - 25 - (i % 2) * 30); // Above bar
+        text.setAttribute("font-size", "10");
+        text.setAttribute("fill", colorText);
+        text.textContent = `Secret V${i + 1}`;
+
+        svg.appendChild(rect);
+        svg.appendChild(text);
+
+        // Tick mark at rotation point
+        const tick = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        tick.setAttribute("cx", getX(endDay));
+        tick.setAttribute("cy", yBase);
+        tick.setAttribute("r", 4);
+        tick.setAttribute("fill", colorOverlap);
+        svg.appendChild(tick);
+
+        // Overlap Zone (if not last)
+        if (i < 2) {
+          const ovRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          // overlap is small fraction usually
+          const overlapDays = state.overlapHours / 24;
+          const ovW = Math.max(getX(overlapDays) - padding, 4); // Min width for visibility
+
+          ovRect.setAttribute("x", getX(endDay) - ovW / 2);
+          ovRect.setAttribute("y", yBase - 10);
+          ovRect.setAttribute("width", ovW);
+          ovRect.setAttribute("height", 20);
+          ovRect.setAttribute("fill", colorOverlap);
+          ovRect.setAttribute("opacity", 0.5);
+          svg.appendChild(ovRect);
+        }
+      });
+    }
+
+    // Handle window resize for SVG
+    window.addEventListener('resize', drawGantt);
+
+    // --- Export ---
+    function exportData() {
+      const data = {
+        tool: "RealistSec Secrets Rotation Generator",
+        generatedAt: new Date().toISOString(),
+        config: state,
+        schedule: []
+      };
+
+      // Build schedule array for export
+      const start = new Date(state.startDate);
+      for (let i = 0; i < 4; i++) {
+        const d = addDays(start, state.cadence * (i + 1));
+        data.schedule.push({
+          rotationNumber: i + 1,
+          date: d.toISOString().split('T')[0],
+          action: "Rotate Secret"
+        });
+      }
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `secrets-schedule-${state.secretType}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
   </script>
 </body>
+
 </html>
