@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firewall Rule Translator</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0f0a17; --panel:#1a1229; --text:#e5e7eb; --muted:#94a3b8; --accent:#ef4444; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:radial-gradient(circle at 22% 28%,#2a1a3f,#0f0a17 65%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); }
+    main { padding:24px 32px 48px; max-width:1600px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(450px,1fr)); gap:20px; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    input, select, textarea { width:100%; padding:12px; border-radius:10px; border:1px solid #1f2937; background:#0f0a17; color:var(--text); font-size:14px; font-family:inherit; }
+    textarea { min-height:150px; font-family:'Fira Code',monospace; font-size:13px; resize:vertical; }
+    button { margin-top:14px; width:100%; padding:13px; border:none; border-radius:10px; background:linear-gradient(135deg,#ef4444,#dc2626); color:#fff; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(239,68,68,0.3); }
+    button:hover { transform:translateY(-1px); }
+    button.secondary { background:linear-gradient(135deg,#8b5cf6,#7c3aed); box-shadow:0 8px 24px rgba(139,92,246,0.3); }
+    pre { background:#0f0a17; border:1px solid #1f2937; border-radius:10px; padding:16px; min-height:200px; max-height:500px; overflow-y:auto; font-family:'Fira Code',monospace; font-size:13px; line-height:1.6; white-space:pre-wrap; }
+    .tabs { display:flex; gap:8px; margin-bottom:16px; border-bottom:1px solid #1f2937; flex-wrap:wrap; }
+    .tab { padding:10px 16px; cursor:pointer; border-bottom:2px solid transparent; font-weight:600; color:var(--muted); font-size:14px; }
+    .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🛡️ Firewall Rule Translator</h1>
+    <p class="subtitle">Convert firewall rules between iptables, UFW, firewalld, Windows Firewall, and cloud providers</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Rule Configuration</h2>
+
+      <label for="action">Action</label>
+      <select id="action">
+        <option value="allow">ALLOW</option>
+        <option value="deny">DENY</option>
+      </select>
+
+      <label for="direction">Direction</label>
+      <select id="direction">
+        <option value="inbound">Inbound</option>
+        <option value="outbound">Outbound</option>
+      </select>
+
+      <label for="protocol">Protocol</label>
+      <select id="protocol">
+        <option value="tcp">TCP</option>
+        <option value="udp">UDP</option>
+        <option value="icmp">ICMP</option>
+        <option value="all">ALL</option>
+      </select>
+
+      <label for="port">Port/Port Range</label>
+      <input id="port" type="text" placeholder="22, 80, 443, 8000-9000" />
+
+      <label for="source">Source IP/CIDR</label>
+      <input id="source" type="text" placeholder="0.0.0.0/0 or 192.168.1.0/24" value="0.0.0.0/0" />
+
+      <label for="destination">Destination IP/CIDR</label>
+      <input id="destination" type="text" placeholder="0.0.0.0/0 or 10.0.0.0/8" value="0.0.0.0/0" />
+
+      <label for="description">Description (optional)</label>
+      <input id="description" type="text" placeholder="SSH access for admin" />
+
+      <button onclick="translate()">Translate to All Formats</button>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <h2>Translated Rules</h2>
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('iptables')">iptables</div>
+        <div class="tab" onclick="switchTab('ufw')">UFW</div>
+        <div class="tab" onclick="switchTab('firewalld')">firewalld</div>
+        <div class="tab" onclick="switchTab('windows')">Windows</div>
+        <div class="tab" onclick="switchTab('aws')">AWS</div>
+        <div class="tab" onclick="switchTab('azure')">Azure</div>
+        <div class="tab" onclick="switchTab('gcp')">GCP</div>
+      </div>
+      <pre id="output"># Configure a rule and click "Translate" to see the output</pre>
+      <button class="secondary" onclick="copyOutput()">📋 Copy to Clipboard</button>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <h2>Common Firewall Rules Examples</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:12px;">
+        <button class="secondary" onclick="loadExample('ssh')">SSH (22)</button>
+        <button class="secondary" onclick="loadExample('http')">HTTP (80)</button>
+        <button class="secondary" onclick="loadExample('https')">HTTPS (443)</button>
+        <button class="secondary" onclick="loadExample('mysql')">MySQL (3306)</button>
+        <button class="secondary" onclick="loadExample('postgres')">PostgreSQL (5432)</button>
+        <button class="secondary" onclick="loadExample('rdp')">RDP (3389)</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let currentTab = 'iptables';
+
+    const examples = {
+      ssh: { action: 'allow', direction: 'inbound', protocol: 'tcp', port: '22', source: '0.0.0.0/0', destination: '0.0.0.0/0', description: 'Allow SSH access' },
+      http: { action: 'allow', direction: 'inbound', protocol: 'tcp', port: '80', source: '0.0.0.0/0', destination: '0.0.0.0/0', description: 'Allow HTTP traffic' },
+      https: { action: 'allow', direction: 'inbound', protocol: 'tcp', port: '443', source: '0.0.0.0/0', destination: '0.0.0.0/0', description: 'Allow HTTPS traffic' },
+      mysql: { action: 'allow', direction: 'inbound', protocol: 'tcp', port: '3306', source: '10.0.0.0/8', destination: '0.0.0.0/0', description: 'Allow MySQL from private network' },
+      postgres: { action: 'allow', direction: 'inbound', protocol: 'tcp', port: '5432', source: '10.0.0.0/8', destination: '0.0.0.0/0', description: 'Allow PostgreSQL from private network' },
+      rdp: { action: 'allow', direction: 'inbound', protocol: 'tcp', port: '3389', source: '192.168.1.0/24', destination: '0.0.0.0/0', description: 'Allow RDP from local network' }
+    };
+
+    function loadExample(type) {
+      const ex = examples[type];
+      document.getElementById('action').value = ex.action;
+      document.getElementById('direction').value = ex.direction;
+      document.getElementById('protocol').value = ex.protocol;
+      document.getElementById('port').value = ex.port;
+      document.getElementById('source').value = ex.source;
+      document.getElementById('destination').value = ex.destination;
+      document.getElementById('description').value = ex.description;
+      translate();
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.textContent.toLowerCase() === tab));
+      translate();
+    }
+
+    function translate() {
+      const action = document.getElementById('action').value;
+      const direction = document.getElementById('direction').value;
+      const protocol = document.getElementById('protocol').value;
+      const port = document.getElementById('port').value.trim();
+      const source = document.getElementById('source').value.trim();
+      const destination = document.getElementById('destination').value.trim();
+      const description = document.getElementById('description').value.trim();
+
+      let output = '';
+      const chain = direction === 'inbound' ? 'INPUT' : 'OUTPUT';
+      const iptablesAction = action === 'allow' ? 'ACCEPT' : 'DROP';
+
+      if (currentTab === 'iptables') {
+        output = `# ${description || 'Firewall rule'}\n`;
+        output += `sudo iptables -A ${chain}`;
+        if (protocol !== 'all') output += ` -p ${protocol}`;
+        if (source !== '0.0.0.0/0') output += ` -s ${source}`;
+        if (destination !== '0.0.0.0/0') output += ` -d ${destination}`;
+        if (port && protocol !== 'icmp' && protocol !== 'all') output += ` --dport ${port}`;
+        output += ` -j ${iptablesAction}`;
+        output += `\n\n# Save rules\nsudo iptables-save > /etc/iptables/rules.v4`;
+      } else if (currentTab === 'ufw') {
+        output = `# ${description || 'Firewall rule'}\n`;
+        const ufwAction = action === 'allow' ? 'allow' : 'deny';
+        output += `sudo ufw ${ufwAction}`;
+        if (direction === 'inbound') output += ` in`;
+        if (direction === 'outbound') output += ` out`;
+        if (protocol !== 'all') output += ` proto ${protocol}`;
+        if (source !== '0.0.0.0/0') output += ` from ${source}`;
+        if (destination !== '0.0.0.0/0') output += ` to ${destination}`;
+        if (port && protocol !== 'icmp') output += ` port ${port}`;
+        if (description) output += ` comment '${description}'`;
+        output += `\n\n# Enable UFW\nsudo ufw enable`;
+      } else if (currentTab === 'firewalld') {
+        output = `# ${description || 'Firewall rule'}\n`;
+        if (action === 'allow') {
+          if (port && protocol !== 'icmp') {
+            output += `sudo firewall-cmd --permanent --add-port=${port}/${protocol}\n`;
+          } else if (protocol === 'icmp') {
+            output += `sudo firewall-cmd --permanent --add-protocol=icmp\n`;
+          }
+          if (source !== '0.0.0.0/0') {
+            output += `sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="${source}" accept'\n`;
+          }
+        } else {
+          output += `sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4"`;
+          if (source !== '0.0.0.0/0') output += ` source address="${source}"`;
+          if (port && protocol !== 'icmp') output += ` port port="${port}" protocol="${protocol}"`;
+          output += ` reject'\n`;
+        }
+        output += `\n# Reload firewall\nsudo firewall-cmd --reload`;
+      } else if (currentTab === 'windows') {
+        output = `# ${description || 'Firewall rule'}\n`;
+        const winAction = action === 'allow' ? 'Allow' : 'Block';
+        const winDirection = direction === 'inbound' ? 'Inbound' : 'Outbound';
+        output += `New-NetFirewallRule -DisplayName "${description || 'Custom Rule'}" ``\n`;
+        output += `  -Direction ${winDirection} ``\n`;
+        output += `  -Action ${winAction} ``\n`;
+        if (protocol !== 'all') output += `  -Protocol ${protocol.toUpperCase()} ``\n`;
+        if (port && protocol !== 'icmp') output += `  -LocalPort ${port} ``\n`;
+        if (source !== '0.0.0.0/0') output += `  -RemoteAddress ${source} ``\n`;
+        output += `  -Enabled True`;
+      } else if (currentTab === 'aws') {
+        output = `# ${description || 'Firewall rule'}\n# AWS Security Group Rule (JSON)\n\n`;
+        output += `{\n`;
+        output += `  "IpPermissions": [\n`;
+        output += `    {\n`;
+        output += `      "IpProtocol": "${protocol === 'all' ? '-1' : protocol}",\n`;
+        if (port && protocol !== 'icmp' && protocol !== 'all') {
+          const ports = port.split('-');
+          output += `      "FromPort": ${ports[0]},\n`;
+          output += `      "ToPort": ${ports.length > 1 ? ports[1] : ports[0]},\n`;
+        }
+        output += `      "IpRanges": [\n`;
+        output += `        {\n`;
+        output += `          "CidrIp": "${source}",\n`;
+        output += `          "Description": "${description || 'Custom rule'}"\n`;
+        output += `        }\n`;
+        output += `      ]\n`;
+        output += `    }\n`;
+        output += `  ]\n`;
+        output += `}\n\n# CLI Command\n`;
+        output += `aws ec2 ${action === 'allow' ? 'authorize' : 'revoke'}-security-group-${direction === 'inbound' ? 'ingress' : 'egress'} \\
+  --group-id sg-xxxxxxxxx \\
+  --protocol ${protocol === 'all' ? '-1' : protocol} \\`;
+        if (port && protocol !== 'icmp') output += `\n  --port ${port} \\`;
+        output += `\n  --cidr ${source}`;
+      } else if (currentTab === 'azure') {
+        output = `# ${description || 'Firewall rule'}\n# Azure Network Security Group Rule\n\n`;
+        output += `az network nsg rule create \\\n`;
+        output += `  --resource-group myResourceGroup \\\n`;
+        output += `  --nsg-name myNsg \\\n`;
+        output += `  --name ${description.replace(/\s+/g, '_') || 'CustomRule'} \\\n`;
+        output += `  --priority 100 \\\n`;
+        output += `  --access ${action === 'allow' ? 'Allow' : 'Deny'} \\\n`;
+        output += `  --direction ${direction === 'inbound' ? 'Inbound' : 'Outbound'} \\\n`;
+        output += `  --protocol ${protocol === 'all' ? '*' : protocol.toUpperCase()} \\\n`;
+        if (port && protocol !== 'icmp') output += `  --destination-port-ranges ${port} \\\n`;
+        output += `  --source-address-prefixes ${source} \\\n`;
+        output += `  --destination-address-prefixes ${destination}`;
+      } else if (currentTab === 'gcp') {
+        output = `# ${description || 'Firewall rule'}\n# Google Cloud Firewall Rule\n\n`;
+        output += `gcloud compute firewall-rules create ${description.replace(/\s+/g, '-').toLowerCase() || 'custom-rule'} \\\n`;
+        output += `  --action ${action.toUpperCase()} \\\n`;
+        output += `  --direction ${direction.toUpperCase()} \\\n`;
+        output += `  --rules ${protocol}${port && protocol !== 'icmp' ? ':' + port : ''} \\\n`;
+        if (source !== '0.0.0.0/0') output += `  --source-ranges ${source} \\\n`;
+        if (destination !== '0.0.0.0/0') output += `  --destination-ranges ${destination} \\\n`;
+        output += `  --description "${description || 'Custom firewall rule'}"`;
+      }
+
+      document.getElementById('output').textContent = output;
+    }
+
+    function copyOutput() {
+      const text = document.getElementById('output').textContent;
+      navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
+    }
+
+    translate();
+  </script>
+</body>
+</html>

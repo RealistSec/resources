@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Codec Converter Chain</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0a1119; --panel:#0f1722; --text:#e5e7eb; --muted:#94a3b8; --accent:#06b6d4; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:radial-gradient(circle at 20% 30%,#1a2f3f,#0a1119 70%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); }
+    main { padding:24px 32px 48px; max-width:1800px; margin:0 auto; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); margin-bottom:20px; }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    textarea { width:100%; min-height:150px; padding:14px; border-radius:10px; border:1px solid #1f2937; background:#0a1119; color:var(--text); font-size:14px; font-family:'Fira Code',monospace; resize:vertical; }
+    select { width:100%; padding:12px; border-radius:10px; border:1px solid #1f2937; background:#0a1119; color:var(--text); font-size:14px; cursor:pointer; }
+    button { margin-top:14px; padding:13px 24px; border:none; border-radius:10px; background:linear-gradient(135deg,#06b6d4,#0891b2); color:#000; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(6,182,212,0.3); }
+    button:hover { transform:translateY(-1px); }
+    button.secondary { background:linear-gradient(135deg,#8b5cf6,#7c3aed); color:#fff; box-shadow:0 8px 24px rgba(139,92,246,0.3); }
+    .chain { display:flex; align-items:center; gap:12px; margin:20px 0; flex-wrap:wrap; }
+    .chain-item { background:#0f1722; border:1px solid #1f2937; border-radius:8px; padding:12px 16px; font-weight:600; }
+    .chain-arrow { color:var(--accent); font-size:24px; }
+    .preset-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin:16px 0; }
+    .preset-btn { padding:12px; border:1px solid #1f2937; border-radius:8px; background:rgba(6,182,212,0.08); cursor:pointer; text-align:center; transition:all 0.2s; font-size:14px; font-weight:600; }
+    .preset-btn:hover { background:rgba(6,182,212,0.15); border-color:var(--accent); }
+    pre { background:#0a1119; border:1px solid #1f2937; border-radius:10px; padding:16px; min-height:150px; font-family:'Fira Code',monospace; font-size:13px; line-height:1.6; white-space:pre-wrap; word-break:break-all; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔄 Codec Converter Chain</h1>
+    <p class="subtitle">Chain multiple encoding/decoding operations: Base64, URL, HTML, Hex, UTF-8, and more</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Input</h2>
+      <label for="input">Enter text to encode/decode</label>
+      <textarea id="input" placeholder="Enter your text here...">Hello, World!</textarea>
+    </section>
+
+    <section class="card">
+      <h2>Conversion Chain</h2>
+
+      <label>Quick Presets</label>
+      <div class="preset-grid">
+        <div class="preset-btn" onclick="applyPreset('url')">URL Encode</div>
+        <div class="preset-btn" onclick="applyPreset('base64')">Base64 Encode</div>
+        <div class="preset-btn" onclick="applyPreset('hex')">Hex Encode</div>
+        <div class="preset-btn" onclick="applyPreset('html')">HTML Encode</div>
+        <div class="preset-btn" onclick="applyPreset('jwt')">JWT Decode</div>
+        <div class="preset-btn" onclick="applyPreset('double')">Double Base64</div>
+      </div>
+
+      <label>Build Custom Chain</label>
+      <div id="chain" class="chain"></div>
+
+      <select id="operation">
+        <option value="">-- Select Operation --</option>
+        <optgroup label="Encoding">
+          <option value="base64-encode">Base64 Encode</option>
+          <option value="url-encode">URL Encode</option>
+          <option value="html-encode">HTML Encode</option>
+          <option value="hex-encode">Hex Encode</option>
+          <option value="unicode-encode">Unicode Encode</option>
+        </optgroup>
+        <optgroup label="Decoding">
+          <option value="base64-decode">Base64 Decode</option>
+          <option value="url-decode">URL Decode</option>
+          <option value="html-decode">HTML Decode</option>
+          <option value="hex-decode">Hex Decode</option>
+          <option value="unicode-decode">Unicode Decode</option>
+        </optgroup>
+        <optgroup label="Hashing">
+          <option value="md5">MD5 Hash</option>
+          <option value="sha1">SHA-1 Hash</option>
+          <option value="sha256">SHA-256 Hash</option>
+        </optgroup>
+        <optgroup label="Transform">
+          <option value="uppercase">Uppercase</option>
+          <option value="lowercase">Lowercase</option>
+          <option value="reverse">Reverse</option>
+          <option value="rot13">ROT13</option>
+        </optgroup>
+      </select>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <button onclick="addOperation()">Add to Chain</button>
+        <button class="secondary" onclick="clearChain()">Clear Chain</button>
+      </div>
+
+      <button onclick="convert()" style="width:100%;">▶️ Execute Chain</button>
+    </section>
+
+    <section class="card">
+      <h2>Output</h2>
+      <pre id="output">Execute the chain to see results</pre>
+      <button onclick="copyOutput()">📋 Copy Output</button>
+      <button class="secondary" onclick="swapInputOutput()">🔄 Use as Input</button>
+    </section>
+
+    <section class="card">
+      <h2>Step-by-Step Results</h2>
+      <div id="steps"></div>
+    </section>
+  </main>
+
+  <script>
+    let operations = [];
+
+    const presets = {
+      url: ['url-encode'],
+      base64: ['base64-encode'],
+      hex: ['hex-encode'],
+      html: ['html-encode'],
+      jwt: ['base64-decode', 'base64-decode'],
+      double: ['base64-encode', 'base64-encode']
+    };
+
+    function applyPreset(type) {
+      operations = presets[type] || [];
+      renderChain();
+      convert();
+    }
+
+    function addOperation() {
+      const op = document.getElementById('operation').value;
+      if (!op) {
+        alert('Select an operation first');
+        return;
+      }
+      operations.push(op);
+      document.getElementById('operation').value = '';
+      renderChain();
+    }
+
+    function removeOperation(index) {
+      operations.splice(index, 1);
+      renderChain();
+    }
+
+    function clearChain() {
+      operations = [];
+      renderChain();
+      document.getElementById('output').textContent = 'Execute the chain to see results';
+      document.getElementById('steps').innerHTML = '';
+    }
+
+    function renderChain() {
+      if (operations.length === 0) {
+        document.getElementById('chain').innerHTML = '<div style="color:var(--muted);">No operations in chain</div>';
+        return;
+      }
+
+      let html = '';
+      operations.forEach((op, i) => {
+        html += `<div class="chain-item">${op} <button onclick="removeOperation(${i})" style="margin-left:8px;padding:2px 8px;background:#dc2626;border:none;border-radius:4px;color:#fff;cursor:pointer;">✕</button></div>`;
+        if (i < operations.length - 1) {
+          html += `<div class="chain-arrow">→</div>`;
+        }
+      });
+
+      document.getElementById('chain').innerHTML = html;
+    }
+
+    async function convert() {
+      let text = document.getElementById('input').value;
+      const steps = [];
+
+      steps.push({ step: 'Input', result: text });
+
+      for (const op of operations) {
+        try {
+          text = await applyOperation(text, op);
+          steps.push({ step: op, result: text });
+        } catch (e) {
+          steps.push({ step: op, result: `Error: ${e.message}`, error: true });
+          break;
+        }
+      }
+
+      document.getElementById('output').textContent = text;
+
+      let stepsHtml = '';
+      steps.forEach((step, i) => {
+        stepsHtml += `<div style="background:#0f1722;border:1px solid ${step.error ? '#dc2626' : '#1f2937'};border-radius:8px;padding:14px;margin:10px 0;">`;
+        stepsHtml += `<div style="font-weight:600;color:${step.error ? '#ef4444' : 'var(--accent)'};margin-bottom:8px;">${i}. ${step.step}</div>`;
+        stepsHtml += `<pre style="margin:0;background:#0a1119;padding:10px;border-radius:6px;max-height:150px;overflow-y:auto;">${step.result}</pre>`;
+        stepsHtml += `</div>`;
+      });
+
+      document.getElementById('steps').innerHTML = stepsHtml;
+    }
+
+    async function applyOperation(text, op) {
+      switch (op) {
+        case 'base64-encode':
+          return btoa(unescape(encodeURIComponent(text)));
+        case 'base64-decode':
+          return decodeURIComponent(escape(atob(text)));
+        case 'url-encode':
+          return encodeURIComponent(text);
+        case 'url-decode':
+          return decodeURIComponent(text);
+        case 'html-encode':
+          return text.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+        case 'html-decode':
+          const el = document.createElement('textarea');
+          el.innerHTML = text;
+          return el.value;
+        case 'hex-encode':
+          return text.split('').map(c => c.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+        case 'hex-decode':
+          return text.match(/.{1,2}/g).map(byte => String.fromCharCode(parseInt(byte, 16))).join('');
+        case 'unicode-encode':
+          return text.split('').map(c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0')).join('');
+        case 'unicode-decode':
+          return text.replace(/\\u[\dA-F]{4}/gi, match => String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16)));
+        case 'md5':
+          return await hashString(text, 'MD5');
+        case 'sha1':
+          return await hashString(text, 'SHA-1');
+        case 'sha256':
+          return await hashString(text, 'SHA-256');
+        case 'uppercase':
+          return text.toUpperCase();
+        case 'lowercase':
+          return text.toLowerCase();
+        case 'reverse':
+          return text.split('').reverse().join('');
+        case 'rot13':
+          return text.replace(/[a-zA-Z]/g, c => String.fromCharCode((c <= 'Z' ? 90 : 122) >= (c = c.charCodeAt(0) + 13) ? c : c - 26));
+        default:
+          throw new Error('Unknown operation');
+      }
+    }
+
+    async function hashString(str, algorithm) {
+      const msgBuffer = new TextEncoder().encode(str);
+      const hashBuffer = await crypto.subtle.digest(algorithm, msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function copyOutput() {
+      const text = document.getElementById('output').textContent;
+      navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
+    }
+
+    function swapInputOutput() {
+      const output = document.getElementById('output').textContent;
+      document.getElementById('input').value = output;
+    }
+
+    renderChain();
+  </script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>STRIDE Threat Model Generator</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#1a0f1e; --panel:#2a1a3e; --text:#e5e7eb; --muted:#94a3b8; --accent:#ec4899; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:radial-gradient(circle at 30% 25%,#3a1f4e,#1a0f1e 70%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); }
+    main { padding:24px 32px 48px; max-width:1600px; margin:0 auto; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); margin-bottom:20px; }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    input, select, textarea { width:100%; padding:12px; border-radius:10px; border:1px solid #1f2937; background:#1a0f1e; color:var(--text); font-size:14px; font-family:inherit; }
+    textarea { min-height:100px; resize:vertical; }
+    button { margin-top:14px; padding:13px 24px; border:none; border-radius:10px; background:linear-gradient(135deg,#ec4899,#db2777); color:#fff; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(236,72,153,0.3); }
+    button:hover { transform:translateY(-1px); }
+    .threat-category { background:#1a0f1e; border-left:4px solid var(--accent); border-radius:8px; padding:16px; margin:12px 0; }
+    .threat-category h3 { margin:0 0 12px; color:var(--accent); font-size:18px; }
+    .threat-item { background:rgba(255,255,255,0.02); border:1px solid #1f2937; border-radius:6px; padding:12px; margin:8px 0; }
+    .threat-severity { display:inline-block; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:700; }
+    .severity-high { background:rgba(239,68,68,0.2); color:#ef4444; }
+    .severity-medium { background:rgba(251,146,60,0.2); color:#fb923c; }
+    .severity-low { background:rgba(34,197,94,0.2); color:#22c55e; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(400px,1fr)); gap:20px; }
+    pre { background:#1a0f1e; border:1px solid #1f2937; border-radius:10px; padding:16px; font-family:'Fira Code',monospace; font-size:13px; line-height:1.6; white-space:pre-wrap; overflow-x:auto; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🛡️ STRIDE Threat Model Generator</h1>
+    <p class="subtitle">Generate comprehensive threat models using Microsoft's STRIDE methodology for security analysis</p>
+  </header>
+
+  <main>
+    <div class="grid">
+      <section class="card">
+        <h2>System Information</h2>
+
+        <label for="systemName">System/Application Name</label>
+        <input id="systemName" type="text" placeholder="e.g., E-commerce API" value="Payment Processing System" />
+
+        <label for="systemType">System Type</label>
+        <select id="systemType">
+          <option value="web">Web Application</option>
+          <option value="api">API/Web Service</option>
+          <option value="mobile">Mobile Application</option>
+          <option value="desktop">Desktop Application</option>
+          <option value="iot">IoT Device</option>
+          <option value="cloud">Cloud Service</option>
+        </select>
+
+        <label for="dataTypes">Data Types Handled</label>
+        <textarea id="dataTypes" placeholder="List data types (e.g., PII, credit cards, health records)">Credit card data, user PII, transaction history, authentication tokens</textarea>
+
+        <label for="users">User Types</label>
+        <textarea id="users" placeholder="List user types (e.g., customers, admins, external APIs)">Customers, merchants, admin users, payment gateway API</textarea>
+
+        <button onclick="generate()">Generate STRIDE Threat Model</button>
+      </section>
+
+      <section class="card">
+        <h2>STRIDE Overview</h2>
+        <div class="threat-category">
+          <h3>S - Spoofing</h3>
+          <p style="color:var(--muted);font-size:14px;">Impersonating something or someone else (authentication threats)</p>
+        </div>
+        <div class="threat-category">
+          <h3>T - Tampering</h3>
+          <p style="color:var(--muted);font-size:14px;">Modifying data or code (integrity threats)</p>
+        </div>
+        <div class="threat-category">
+          <h3>R - Repudiation</h3>
+          <p style="color:var(--muted);font-size:14px;">Claiming to not have performed an action (accountability threats)</p>
+        </div>
+        <div class="threat-category">
+          <h3>I - Information Disclosure</h3>
+          <p style="color:var(--muted);font-size:14px;">Exposing information to unauthorized parties (confidentiality threats)</p>
+        </div>
+        <div class="threat-category">
+          <h3>D - Denial of Service</h3>
+          <p style="color:var(--muted);font-size:14px;">Disrupting or degrading service (availability threats)</p>
+        </div>
+        <div class="threat-category">
+          <h3>E - Elevation of Privilege</h3>
+          <p style="color:var(--muted);font-size:14px;">Gaining unauthorized capabilities (authorization threats)</p>
+        </div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>Generated Threat Model</h2>
+      <div id="threats"></div>
+    </section>
+
+    <section class="card">
+      <h2>Export Threat Model</h2>
+      <pre id="export">Generate a threat model first</pre>
+      <button onclick="copyExport()">📋 Copy to Clipboard</button>
+      <button onclick="downloadExport()">💾 Download Report</button>
+    </section>
+  </main>
+
+  <script>
+    const strideTemplates = {
+      spoofing: [
+        { threat: 'Weak or missing authentication', mitigation: 'Implement multi-factor authentication (MFA)', severity: 'high' },
+        { threat: 'Session token theft/hijacking', mitigation: 'Use secure, HTTPOnly cookies with proper expiration', severity: 'high' },
+        { threat: 'Credential stuffing attacks', mitigation: 'Implement rate limiting and CAPTCHA', severity: 'medium' },
+        { threat: 'Man-in-the-middle attacks', mitigation: 'Enforce HTTPS/TLS for all communications', severity: 'high' }
+      ],
+      tampering: [
+        { threat: 'Data modification in transit', mitigation: 'Use TLS/SSL encryption and verify integrity', severity: 'high' },
+        { threat: 'SQL injection attacks', mitigation: 'Use parameterized queries and input validation', severity: 'high' },
+        { threat: 'API parameter manipulation', mitigation: 'Validate and sanitize all inputs server-side', severity: 'medium' },
+        { threat: 'File upload attacks', mitigation: 'Validate file types, scan for malware, use separate storage', severity: 'high' }
+      ],
+      repudiation: [
+        { threat: 'Users denying actions', mitigation: 'Implement comprehensive audit logging', severity: 'medium' },
+        { threat: 'Missing transaction logs', mitigation: 'Log all critical operations with timestamps', severity: 'medium' },
+        { threat: 'Log tampering', mitigation: 'Use write-once storage or log forwarding', severity: 'low' },
+        { threat: 'Insufficient accountability', mitigation: 'Digital signatures for critical transactions', severity: 'medium' }
+      ],
+      information: [
+        { threat: 'Sensitive data in logs', mitigation: 'Sanitize logs, never log credentials or PII', severity: 'high' },
+        { threat: 'API information leakage', mitigation: 'Implement proper error handling, generic error messages', severity: 'medium' },
+        { threat: 'Insecure data storage', mitigation: 'Encrypt sensitive data at rest using AES-256', severity: 'high' },
+        { threat: 'Unencrypted backups', mitigation: 'Encrypt all backups and secure storage access', severity: 'high' }
+      ],
+      dos: [
+        { threat: 'Resource exhaustion attacks', mitigation: 'Implement rate limiting and resource quotas', severity: 'medium' },
+        { threat: 'Application-layer DDoS', mitigation: 'Use CDN and DDoS protection services', severity: 'medium' },
+        { threat: 'Database connection exhaustion', mitigation: 'Connection pooling and query timeouts', severity: 'medium' },
+        { threat: 'Algorithmic complexity attacks', mitigation: 'Set input size limits and optimize algorithms', severity: 'low' }
+      ],
+      privilege: [
+        { threat: 'Privilege escalation via API', mitigation: 'Implement role-based access control (RBAC)', severity: 'high' },
+        { threat: 'Insecure direct object references', mitigation: 'Validate authorization for all resource access', severity: 'high' },
+        { threat: 'Path traversal attacks', mitigation: 'Validate and sanitize file paths, use whitelists', severity: 'high' },
+        { threat: 'Missing function-level access control', mitigation: 'Enforce authorization checks on all endpoints', severity: 'high' }
+      ]
+    };
+
+    function generate() {
+      const systemName = document.getElementById('systemName').value || 'System';
+      const systemType = document.getElementById('systemType').value;
+      const dataTypes = document.getElementById('dataTypes').value;
+      const users = document.getElementById('users').value;
+
+      let html = `<div style="background:#1a0f1e;border:1px solid var(--accent);border-radius:10px;padding:20px;margin-bottom:20px;">`;
+      html += `<h3 style="margin:0 0 12px;color:var(--accent);">System: ${systemName}</h3>`;
+      html += `<p style="color:var(--muted);margin:0;"><strong>Type:</strong> ${systemType}</p>`;
+      html += `<p style="color:var(--muted);margin:8px 0 0;"><strong>Data Types:</strong> ${dataTypes}</p>`;
+      html += `<p style="color:var(--muted);margin:8px 0 0;"><strong>Users:</strong> ${users}</p>`;
+      html += `</div>`;
+
+      const categories = [
+        { key: 'spoofing', name: 'Spoofing Identity', color: '#ef4444' },
+        { key: 'tampering', name: 'Tampering with Data', color: '#f97316' },
+        { key: 'repudiation', name: 'Repudiation', color: '#f59e0b' },
+        { key: 'information', name: 'Information Disclosure', color: '#ec4899' },
+        { key: 'dos', name: 'Denial of Service', color: '#a855f7' },
+        { key: 'privilege', name: 'Elevation of Privilege', color: '#dc2626' }
+      ];
+
+      categories.forEach(cat => {
+        const threats = strideTemplates[cat.key];
+        html += `<div class="threat-category" style="border-left-color:${cat.color};">`;
+        html += `<h3 style="color:${cat.color};">${cat.name}</h3>`;
+
+        threats.forEach(t => {
+          html += `<div class="threat-item">`;
+          html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">`;
+          html += `<strong>${t.threat}</strong>`;
+          html += `<span class="threat-severity severity-${t.severity}">${t.severity.toUpperCase()}</span>`;
+          html += `</div>`;
+          html += `<div style="color:var(--muted);font-size:13px;"><strong>Mitigation:</strong> ${t.mitigation}</div>`;
+          html += `</div>`;
+        });
+
+        html += `</div>`;
+      });
+
+      document.getElementById('threats').innerHTML = html;
+
+      // Generate export
+      let exportText = `STRIDE THREAT MODEL REPORT\n`;
+      exportText += `${'='.repeat(80)}\n\n`;
+      exportText += `System: ${systemName}\n`;
+      exportText += `Type: ${systemType}\n`;
+      exportText += `Generated: ${new Date().toISOString()}\n\n`;
+      exportText += `Data Types Handled:\n${dataTypes}\n\n`;
+      exportText += `User Types:\n${users}\n\n`;
+      exportText += `${'='.repeat(80)}\n\n`;
+
+      categories.forEach(cat => {
+        exportText += `${cat.name.toUpperCase()}\n`;
+        exportText += `${'-'.repeat(80)}\n\n`;
+
+        strideTemplates[cat.key].forEach(t => {
+          exportText += `Threat: ${t.threat}\n`;
+          exportText += `Severity: ${t.severity.toUpperCase()}\n`;
+          exportText += `Mitigation: ${t.mitigation}\n\n`;
+        });
+      });
+
+      document.getElementById('export').textContent = exportText;
+    }
+
+    function copyExport() {
+      const text = document.getElementById('export').textContent;
+      navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
+    }
+
+    function downloadExport() {
+      const text = document.getElementById('export').textContent;
+      const systemName = document.getElementById('systemName').value.replace(/\s+/g, '_') || 'system';
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `STRIDE_${systemName}_${Date.now()}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    generate();
+  </script>
+</body>
+</html>
