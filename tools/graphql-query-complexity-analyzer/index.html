@@ -14,9 +14,18 @@
     label { display:block; margin:8px 0 6px; font-weight:600; color:var(--muted); }
     textarea, select { width:100%; background:#0b1224; border:1px solid #1f2937; border-radius:12px; padding:12px; color:var(--text); resize:vertical; min-height:180px; box-sizing:border-box; }
     button { margin-top:12px; background:linear-gradient(90deg,#f472b6,#a855f7); border:none; color:#fff; padding:12px 16px; border-radius:12px; font-weight:700; cursor:pointer; width:100%; box-shadow:0 16px 36px rgba(168,85,247,0.35); }
+    button.secondary { background:linear-gradient(90deg,#8b5cf6,#7c3aed); box-shadow:0 16px 36px rgba(139,92,246,0.35); }
+    button:hover { transform:translateY(-1px); }
     pre { background:#0b1224; border:1px solid #1f2937; border-radius:12px; padding:12px; white-space:pre-wrap; word-break:break-word; min-height:140px; margin:0; }
     .badge { display:inline-flex; padding:6px 10px; border-radius:10px; border:1px solid #1f2937; margin:4px 6px 4px 0; font-size:12px; }
     .score { font-size:32px; font-weight:800; }
+    .breakdown-item { background:#0b1224; border:1px solid #1f2937; border-radius:8px; padding:10px; margin:8px 0; display:flex; justify-content:space-between; align-items:center; }
+    .breakdown-label { color:var(--muted); font-weight:600; }
+    .breakdown-value { color:var(--accent); font-weight:700; font-size:18px; }
+    input[type="number"] { width:100%; background:#0b1224; border:1px solid #1f2937; border-radius:12px; padding:12px; color:var(--text); box-sizing:border-box; }
+    .optimization { background:#0b1224; border-left:3px solid var(--accent); border-radius:8px; padding:12px; margin:8px 0; }
+    .optimization-title { font-weight:700; color:var(--accent); margin-bottom:6px; }
+    .optimization-desc { color:var(--muted); font-size:14px; }
   </style>
 </head>
 <body>
@@ -46,7 +55,10 @@
     }
   }
 }</textarea>
-      <button onclick="analyze()">Analyze</button>
+      <button onclick="analyze()">Analyze Query</button>
+
+      <label for="budget" style="margin-top:16px;">Performance Budget (optional)</label>
+      <input id="budget" type="number" placeholder="e.g., 100" />
     </section>
 
     <section class="card">
@@ -59,23 +71,58 @@
       </div>
       <pre id="details"></pre>
     </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 12px;">Cost Breakdown</h3>
+      <div id="breakdown"></div>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 12px;">Optimization Suggestions</h3>
+      <div id="optimizations"></div>
+      <button class="secondary" onclick="exportReport()">📊 Export Report</button>
+    </section>
   </main>
 
   <script>
+    let currentAnalysis = null;
+
     function analyze() {
       const text = document.getElementById('query').value;
+      const budget = parseFloat(document.getElementById('budget').value) || null;
       const lines = text.split(/\n/);
+
       let depth = 0, maxDepth = 0, fields = 0, lists = 0;
+      let mutations = 0, queries = 0, fragments = 0;
+      let listSizes = [];
+
       lines.forEach(line => {
         const open = (line.match(/\{/g) || []).length;
         const close = (line.match(/\}/g) || []).length;
         depth += open - close;
         maxDepth = Math.max(maxDepth, depth);
         const stripped = line.trim();
-        if (/\b(first|last|limit)\s*:\s*\d+/i.test(stripped)) lists += 1;
+
+        if (/^mutation\s/.test(stripped)) mutations++;
+        if (/^query\s/.test(stripped)) queries++;
+        if (/^fragment\s/.test(stripped)) fragments++;
+
+        const listMatch = stripped.match(/\b(first|last|limit)\s*:\s*(\d+)/i);
+        if (listMatch) {
+          lists += 1;
+          listSizes.push(parseInt(listMatch[2]));
+        }
+
         if (/^[A-Za-z0-9_]+/.test(stripped) && stripped.includes(':') === false && stripped.includes('{') === false) fields += 1;
       });
-      const estimated = fields * (1 + maxDepth * 0.6) + lists * 8;
+
+      // Calculate costs
+      const fieldCost = fields * (1 + maxDepth * 0.6);
+      const listCost = lists * 8;
+      const depthPenalty = maxDepth > 5 ? (maxDepth - 5) * 10 : 0;
+      const mutationCost = mutations * 15;
+
+      const estimated = fieldCost + listCost + depthPenalty + mutationCost;
       const score = Math.round(estimated * 10) / 10;
       const risk = score > 80 ? 'High' : score > 40 ? 'Medium' : 'Low';
 
@@ -83,6 +130,8 @@
       if (maxDepth > 4) suggestions.push(`Depth ${maxDepth}: consider flattening or batching.`);
       if (lists > 0) suggestions.push(`${lists} list argument(s) detected: ensure limits & pagination.`);
       if (fields > 40) suggestions.push(`High field count (${fields}): trim the selection set.`);
+      if (listSizes.some(size => size > 100)) suggestions.push('Large list limits detected (>100): consider smaller page sizes.');
+      if (mutations > 0 && queries > 0) suggestions.push('Mixed mutations and queries: consider separating for better tracing.');
       if (!suggestions.length) suggestions.push('Looks good! Still enforce server-side limits.');
 
       document.getElementById('score').textContent = score;
@@ -91,10 +140,159 @@
         `Fields: ${fields}`,
         `Max depth: ${maxDepth}`,
         `List args: ${lists}`,
+        `Operations: ${queries} queries, ${mutations} mutations`,
+        `Fragments: ${fragments}`,
         '',
         'Notes:',
         ...suggestions.map(s => `• ${s}`)
       ].join('\n');
+
+      // Cost breakdown
+      let breakdownHTML = `
+        <div class="breakdown-item">
+          <span class="breakdown-label">Field Selection Cost</span>
+          <span class="breakdown-value">${fieldCost.toFixed(1)}</span>
+        </div>
+        <div class="breakdown-item">
+          <span class="breakdown-label">List Operations Cost</span>
+          <span class="breakdown-value">${listCost.toFixed(1)}</span>
+        </div>`;
+
+      if (depthPenalty > 0) {
+        breakdownHTML += `
+        <div class="breakdown-item">
+          <span class="breakdown-label">Depth Penalty (>${5})</span>
+          <span class="breakdown-value">${depthPenalty.toFixed(1)}</span>
+        </div>`;
+      }
+
+      if (mutationCost > 0) {
+        breakdownHTML += `
+        <div class="breakdown-item">
+          <span class="breakdown-label">Mutation Cost</span>
+          <span class="breakdown-value">${mutationCost.toFixed(1)}</span>
+        </div>`;
+      }
+
+      if (budget) {
+        const withinBudget = score <= budget;
+        breakdownHTML += `
+        <div class="breakdown-item" style="border-top:2px solid ${withinBudget ? '#22c55e' : '#ef4444'};margin-top:12px;padding-top:12px;">
+          <span class="breakdown-label">Budget Status</span>
+          <span class="breakdown-value" style="color:${withinBudget ? '#22c55e' : '#ef4444'};">${withinBudget ? '✓ Within' : '✗ Exceeded'}</span>
+        </div>`;
+      }
+
+      document.getElementById('breakdown').innerHTML = breakdownHTML;
+
+      // Optimization suggestions
+      let optimizationsHTML = '';
+
+      if (fields > 30) {
+        optimizationsHTML += `
+        <div class="optimization">
+          <div class="optimization-title">Reduce Field Selection</div>
+          <div class="optimization-desc">Query selects ${fields} fields. Consider using fragments to reuse common field sets and only request necessary data.</div>
+        </div>`;
+      }
+
+      if (maxDepth > 3) {
+        optimizationsHTML += `
+        <div class="optimization">
+          <div class="optimization-title">Flatten Query Structure</div>
+          <div class="optimization-desc">Query depth is ${maxDepth}. Deep nesting increases resolver execution time. Consider using separate queries or implementing DataLoader for batching.</div>
+        </div>`;
+      }
+
+      if (lists > 2) {
+        optimizationsHTML += `
+        <div class="optimization">
+          <div class="optimization-title">Implement Cursor-Based Pagination</div>
+          <div class="optimization-desc">Query has ${lists} list operations. Use cursor-based pagination with 'after' arguments for better performance and scalability.</div>
+        </div>`;
+      }
+
+      if (fragments === 0 && fields > 20) {
+        optimizationsHTML += `
+        <div class="optimization">
+          <div class="optimization-title">Use Fragments</div>
+          <div class="optimization-desc">No fragments detected. Extract common field selections into reusable fragments to reduce duplication and complexity.</div>
+        </div>`;
+      }
+
+      if (!optimizationsHTML) {
+        optimizationsHTML = '<div style="color:var(--muted);">No optimizations needed - query looks efficient!</div>';
+      }
+
+      document.getElementById('optimizations').innerHTML = optimizationsHTML;
+
+      // Store for export
+      currentAnalysis = {
+        score,
+        risk,
+        fields,
+        maxDepth,
+        lists,
+        queries,
+        mutations,
+        fragments,
+        fieldCost,
+        listCost,
+        depthPenalty,
+        mutationCost,
+        suggestions,
+        budget
+      };
+    }
+
+    function exportReport() {
+      if (!currentAnalysis) {
+        alert('Analyze a query first');
+        return;
+      }
+
+      const report = `GRAPHQL QUERY COMPLEXITY REPORT
+${'='.repeat(80)}
+
+Generated: ${new Date().toISOString()}
+
+OVERALL SCORE: ${currentAnalysis.score}
+Risk Level: ${currentAnalysis.risk}
+${currentAnalysis.budget ? `Performance Budget: ${currentAnalysis.budget} (${currentAnalysis.score <= currentAnalysis.budget ? 'PASS' : 'FAIL'})` : ''}
+
+METRICS
+${'-'.repeat(80)}
+Fields Selected: ${currentAnalysis.fields}
+Max Depth: ${currentAnalysis.maxDepth}
+List Operations: ${currentAnalysis.lists}
+Queries: ${currentAnalysis.queries}
+Mutations: ${currentAnalysis.mutations}
+Fragments: ${currentAnalysis.fragments}
+
+COST BREAKDOWN
+${'-'.repeat(80)}
+Field Selection: ${currentAnalysis.fieldCost.toFixed(1)}
+List Operations: ${currentAnalysis.listCost.toFixed(1)}
+Depth Penalty: ${currentAnalysis.depthPenalty.toFixed(1)}
+Mutation Cost: ${currentAnalysis.mutationCost.toFixed(1)}
+Total: ${currentAnalysis.score}
+
+RECOMMENDATIONS
+${'-'.repeat(80)}
+${currentAnalysis.suggestions.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+QUERY ANALYZED
+${'-'.repeat(80)}
+${document.getElementById('query').value}
+`;
+
+      const blob = new Blob([report], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `graphql-complexity-report-${Date.now()}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
     analyze();
