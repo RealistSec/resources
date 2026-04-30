@@ -1,0 +1,88 @@
+prd_id: 20260430-tools-suite-rebuild
+version: 0.1.0
+user_stories:
+  - as_a: portfolio visitor
+    i_want: each tool to feel polished, useful, and consistent
+    so_that: the suite reads as a credible collection instead of disconnected demos
+  - as_a: practitioner using a tool locally
+    i_want: each mini app to work entirely in the browser with real outputs
+    so_that: I can use it offline or on sensitive inputs without a backend
+  - as_a: future implementation agent
+    i_want: clear delivery standards for every tool in scope
+    so_that: rebuild work stays consistent across the suite
+scope:
+  in_scope:
+    - Rebuild the seven tools under /tools as standalone static mini apps
+    - Apply a shared suite UX and design language across all seven tools
+    - Ensure each tool has real client-side logic and at least two worthwhile new features
+    - Standardize per-tool deliverables: working app, README, user guide, dev guide, screenshot asset
+    - Keep /tools/index.html aligned with rebuilt tool metadata and screenshots
+    - Treat accessibility, responsive behavior, and offline/local processing as default expectations where applicable
+  out_of_scope:
+    - Adding backend services, user accounts, or hosted APIs as required runtime dependencies
+    - Rebuilding archived tools outside /tools
+    - Introducing placeholder demo states as final deliverables
+acceptance_criteria:
+  - criterion: Each in-scope tool remains directly hostable from static files.
+    verification: Open the tool locally and confirm the core flow works without a server.
+  - criterion: Each in-scope tool contains real user-facing logic, not mocked output.
+    verification: Exercise representative inputs and confirm outputs derive from those inputs.
+  - criterion: Each in-scope tool adds at least two meaningful new features over its current baseline.
+    verification: Compare rebuilt behavior and docs against the current tool folder before merge.
+  - criterion: Each in-scope tool ships with README.md, docs/user-guide.md, docs/dev-guide.md, and docs/screenshot.png.
+    verification: Confirm each file exists and matches the final UI and behavior.
+  - criterion: The seven tools share a recognizable UX system.
+    verification: Review layouts, states, spacing, buttons, forms, and result panels across the suite.
+  - criterion: Portfolio index integration is complete.
+    verification: Check /tools/index.html links, labels, screenshots, and alt text for all rebuilt tools.
+  - criterion: Accessibility and responsive behavior are treated as baseline quality requirements.
+    verification: Test keyboard flow, focus visibility, contrast, and narrow viewport behavior for each tool.
+needs_clarification: []
+features:
+  - name: Static standalone tool architecture
+    overview: Every tool must run as a static mini app with local client-side logic.
+    status: in_progress
+  - name: Shared suite UX and design language
+    overview: The seven tools should look and behave like one cohesive product family.
+    status: in_progress
+  - name: Per-tool docs and screenshot contract
+    overview: Every tool must ship with consistent README, guides, and portfolio-ready screenshot assets.
+    status: in_progress
+  - name: Portfolio index integration
+    overview: The tools landing page is part of the deliverable, not a follow-up task.
+    status: in_progress
+state_machines: []
+errors: []
+decisions:
+  - id: ADR-001
+    status: accepted
+    decision: Keep each tool independently hostable from static files.
+    rationale: The suite is meant to be easy to open locally, share, and deploy to static hosting.
+    alternatives:
+      - Introduce a shared application shell with a required build step
+      - Convert the suite to a backend-backed multi-page app
+    consequences:
+      - Shared patterns must be lightweight and portable
+      - Logic lives in the browser and must degrade gracefully offline
+    superseded_by: ""
+  - id: ADR-002
+    status: accepted
+    decision: Treat real client-side functionality as mandatory for every rebuild.
+    rationale: Portfolio utilities must be genuinely useful and must not depend on fake output states.
+    alternatives:
+      - Ship visual mockups first and fill in logic later
+    consequences:
+      - Sample data may be included, but outputs must always derive from real calculations, parsing, or transformation
+    superseded_by: ""
+  - id: ADR-003
+    status: accepted
+    decision: Standardize docs and screenshot assets across all seven tools.
+    rationale: Consistent documentation and screenshots make the suite maintainable and portfolio-ready.
+    alternatives:
+      - Allow each tool to define its own artifact structure
+    consequences:
+      - Implementation is not done until docs and portfolio assets are updated
+    superseded_by: ""
+changes:
+  - version: 0.1.0
+    change: Initial PRD for the 20260430 tools suite rebuild plan.
