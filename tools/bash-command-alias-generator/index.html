@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bash Command Alias Generator</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0f0a1e; --panel:#1a1129; --text:#e5e7eb; --muted:#94a3b8; --accent:#f59e0b; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:linear-gradient(135deg,#1a0a2e 0%,#0f0514 100%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); }
+    main { padding:24px 32px 48px; display:grid; grid-template-columns:repeat(auto-fit,minmax(400px,1fr)); gap:20px; max-width:1800px; margin:0 auto; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    input, textarea, select { width:100%; padding:12px; border-radius:10px; border:1px solid #1f2937; background:#0a0515; color:var(--text); font-size:14px; font-family:'Fira Code',monospace; }
+    textarea { min-height:100px; resize:vertical; }
+    button { margin-top:14px; width:100%; padding:13px; border:none; border-radius:10px; background:linear-gradient(135deg,#f59e0b,#d97706); color:#000; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(245,158,11,0.3); }
+    button:hover { transform:translateY(-1px); }
+    button.secondary { background:linear-gradient(135deg,#8b5cf6,#7c3aed); color:#fff; box-shadow:0 8px 24px rgba(139,92,246,0.3); }
+    pre { background:#0a0515; border:1px solid #1f2937; border-radius:10px; padding:16px; min-height:250px; max-height:500px; overflow-y:auto; font-family:'Fira Code',monospace; font-size:13px; line-height:1.8; }
+    .alias-item { background:#0a0515; border:1px solid #1f2937; border-radius:8px; padding:12px; margin:8px 0; display:flex; justify-content:space-between; align-items:start; gap:10px; }
+    .alias-name { font-weight:700; color:var(--accent); margin-bottom:4px; }
+    .alias-cmd { color:var(--muted); font-size:13px; font-family:'Fira Code',monospace; }
+    .template-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin-top:8px; }
+    .template-btn { padding:10px; border:1px solid #1f2937; border-radius:8px; background:rgba(245,158,11,0.08); cursor:pointer; font-size:12px; text-align:center; transition:all 0.2s; }
+    .template-btn:hover { background:rgba(245,158,11,0.15); border-color:var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚡ Bash Command Alias Generator</h1>
+    <p class="subtitle">Create, organize, and export shell aliases with templates and best practices</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Create Alias</h2>
+
+      <label>Quick Templates</label>
+      <div class="template-grid">
+        <div class="template-btn" onclick="loadTemplate('git')">Git Shortcuts</div>
+        <div class="template-btn" onclick="loadTemplate('docker')">Docker</div>
+        <div class="template-btn" onclick="loadTemplate('nav')">Navigation</div>
+        <div class="template-btn" onclick="loadTemplate('system')">System</div>
+      </div>
+
+      <label for="aliasName">Alias Name</label>
+      <input id="aliasName" type="text" placeholder="e.g., ll, gst, dps" />
+
+      <label for="aliasCommand">Command</label>
+      <textarea id="aliasCommand" placeholder="e.g., ls -lah&#10;git status&#10;docker ps -a"></textarea>
+
+      <label for="aliasDesc">Description (optional)</label>
+      <input id="aliasDesc" type="text" placeholder="What this alias does" style="font-family:inherit;" />
+
+      <button onclick="addAlias()">Add Alias</button>
+    </section>
+
+    <section class="card">
+      <h2>Your Aliases (<span id="count">0</span>)</h2>
+      <div id="aliasList" style="max-height:400px;overflow-y:auto;"></div>
+      <button class="secondary" onclick="clearAll()">Clear All</button>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <h2>Generated .bashrc / .zshrc</h2>
+      <pre id="output"># No aliases added yet
+# Add aliases using the form above</pre>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+        <button class="secondary" onclick="copyOutput()">📋 Copy to Clipboard</button>
+        <button class="secondary" onclick="downloadOutput()">💾 Download .bashrc</button>
+        <button class="secondary" onclick="testAlias()">🧪 Test Syntax</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let aliases = [];
+
+    const templates = {
+      git: [
+        { name: 'gs', cmd: 'git status', desc: 'Git status' },
+        { name: 'ga', cmd: 'git add .', desc: 'Git add all' },
+        { name: 'gc', cmd: 'git commit -m', desc: 'Git commit with message' },
+        { name: 'gp', cmd: 'git push', desc: 'Git push' },
+        { name: 'gl', cmd: 'git log --oneline --graph --decorate', desc: 'Pretty git log' },
+        { name: 'gd', cmd: 'git diff', desc: 'Git diff' },
+        { name: 'gco', cmd: 'git checkout', desc: 'Git checkout' },
+        { name: 'gb', cmd: 'git branch', desc: 'List branches' }
+      ],
+      docker: [
+        { name: 'dps', cmd: 'docker ps', desc: 'List running containers' },
+        { name: 'dpsa', cmd: 'docker ps -a', desc: 'List all containers' },
+        { name: 'di', cmd: 'docker images', desc: 'List images' },
+        { name: 'dex', cmd: 'docker exec -it', desc: 'Execute in container' },
+        { name: 'dlog', cmd: 'docker logs -f', desc: 'Follow container logs' },
+        { name: 'dcp', cmd: 'docker-compose', desc: 'Docker compose shorthand' },
+        { name: 'dcup', cmd: 'docker-compose up -d', desc: 'Compose up detached' },
+        { name: 'dcdown', cmd: 'docker-compose down', desc: 'Compose down' }
+      ],
+      nav: [
+        { name: 'll', cmd: 'ls -lah', desc: 'List all files with details' },
+        { name: 'la', cmd: 'ls -A', desc: 'List all files' },
+        { name: '..', cmd: 'cd ..', desc: 'Go up one directory' },
+        { name: '...', cmd: 'cd ../..', desc: 'Go up two directories' },
+        { name: '....', cmd: 'cd ../../..', desc: 'Go up three directories' },
+        { name: 'h', cmd: 'cd ~', desc: 'Go to home directory' }
+      ],
+      system: [
+        { name: 'c', cmd: 'clear', desc: 'Clear terminal' },
+        { name: 'myip', cmd: 'curl ifconfig.me', desc: 'Get public IP' },
+        { name: 'ports', cmd: 'netstat -tulanp', desc: 'Show open ports' },
+        { name: 'meminfo', cmd: 'free -h', desc: 'Memory information' },
+        { name: 'diskspace', cmd: 'df -h', desc: 'Disk space usage' },
+        { name: 'psg', cmd: 'ps aux | grep -v grep | grep -i -e VSZ -e', desc: 'Process search' }
+      ]
+    };
+
+    function loadTemplate(type) {
+      const template = templates[type];
+      aliases = [...aliases, ...template.filter(t => !aliases.find(a => a.name === t.name))];
+      render();
+    }
+
+    function addAlias() {
+      const name = document.getElementById('aliasName').value.trim();
+      const cmd = document.getElementById('aliasCommand').value.trim();
+      const desc = document.getElementById('aliasDesc').value.trim();
+
+      if (!name || !cmd) {
+        alert('Alias name and command are required');
+        return;
+      }
+
+      if (!/^[a-z0-9_.-]+$/i.test(name)) {
+        alert('Alias name should only contain letters, numbers, underscores, dots, and hyphens');
+        return;
+      }
+
+      if (aliases.find(a => a.name === name)) {
+        if (!confirm(`Alias "${name}" already exists. Replace it?`)) {
+          return;
+        }
+        aliases = aliases.filter(a => a.name !== name);
+      }
+
+      aliases.push({ name, cmd, desc });
+
+      document.getElementById('aliasName').value = '';
+      document.getElementById('aliasCommand').value = '';
+      document.getElementById('aliasDesc').value = '';
+
+      render();
+    }
+
+    function removeAlias(name) {
+      aliases = aliases.filter(a => a.name !== name);
+      render();
+    }
+
+    function clearAll() {
+      if (aliases.length === 0) return;
+      if (confirm('Clear all aliases?')) {
+        aliases = [];
+        render();
+      }
+    }
+
+    function render() {
+      document.getElementById('count').textContent = aliases.length;
+
+      const listEl = document.getElementById('aliasList');
+      if (aliases.length === 0) {
+        listEl.innerHTML = '<div style="color:var(--muted);padding:12px;">No aliases added yet</div>';
+      } else {
+        listEl.innerHTML = aliases.map(a =>
+          `<div class="alias-item">
+            <div style="flex:1;">
+              <div class="alias-name">${a.name}</div>
+              <div class="alias-cmd">${a.cmd}</div>
+              ${a.desc ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${a.desc}</div>` : ''}
+            </div>
+            <button style="padding:4px 10px;font-size:12px;margin:0;width:auto;" onclick="removeAlias('${a.name}')">✕</button>
+          </div>`
+        ).join('');
+      }
+
+      let output = '';
+      if (aliases.length === 0) {
+        output = '# No aliases added yet\n# Add aliases using the form above';
+      } else {
+        output = '#!/bin/bash\n# Generated by Bash Command Alias Generator\n# Add this to your ~/.bashrc or ~/.zshrc\n\n';
+        output += '# ===== Custom Aliases =====\n\n';
+
+        aliases.forEach(a => {
+          if (a.desc) {
+            output += `# ${a.desc}\n`;
+          }
+          const needsQuotes = a.cmd.includes(' ') || a.cmd.includes('|') || a.cmd.includes('>');
+          output += `alias ${a.name}='${a.cmd}'\n\n`;
+        });
+
+        output += '# To apply changes, run: source ~/.bashrc\n';
+        output += '# Or for zsh: source ~/.zshrc';
+      }
+
+      document.getElementById('output').textContent = output;
+    }
+
+    function copyOutput() {
+      const text = document.getElementById('output').textContent;
+      navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
+    }
+
+    function downloadOutput() {
+      const text = document.getElementById('output').textContent;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'aliases.sh';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function testAlias() {
+      const issues = [];
+      const warnings = [];
+
+      aliases.forEach(a => {
+        if (a.name.length === 1) {
+          warnings.push(`"${a.name}" is very short - might conflict with built-in commands`);
+        }
+
+        const builtins = ['cd', 'ls', 'cp', 'mv', 'rm', 'mkdir', 'cat', 'echo', 'pwd'];
+        if (builtins.includes(a.name)) {
+          warnings.push(`"${a.name}" overrides a built-in command`);
+        }
+
+        if (a.cmd.includes('sudo rm -rf')) {
+          issues.push(`"${a.name}" contains dangerous command (sudo rm -rf)`);
+        }
+
+        if (a.cmd.includes('&&') || a.cmd.includes(';')) {
+          warnings.push(`"${a.name}" chains multiple commands - ensure proper error handling`);
+        }
+      });
+
+      let msg = '';
+      if (issues.length === 0 && warnings.length === 0) {
+        msg = '✅ All aliases look good!\n\nTo use:\n1. Copy or download the aliases\n2. Add to ~/.bashrc or ~/.zshrc\n3. Run: source ~/.bashrc (or ~/.zshrc)\n4. Test with: type <alias_name>';
+      } else {
+        if (issues.length > 0) {
+          msg += '❌ Critical Issues:\n' + issues.map(i => `  • ${i}`).join('\n') + '\n\n';
+        }
+        if (warnings.length > 0) {
+          msg += '⚠️ Warnings:\n' + warnings.map(w => `  • ${w}`).join('\n');
+        }
+      }
+
+      alert(msg);
+    }
+
+    render();
+  </script>
+</body>
+</html>

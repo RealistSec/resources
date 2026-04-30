@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CORS Header Validator</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0a0e1a; --panel:#0f1729; --text:#e5e7eb; --muted:#94a3b8; --accent:#8b5cf6; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:radial-gradient(circle at 20% 15%,#1e1b4b,#0a0e1a 60%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); font-size:15px; }
+    .badge { padding:8px 14px; border:1px solid #1f2937; border-radius:10px; font-size:13px; font-weight:600; background:rgba(139,92,246,0.1); }
+    main { padding:24px 32px 48px; display:grid; grid-template-columns:repeat(auto-fit,minmax(400px,1fr)); gap:20px; max-width:1800px; margin:0 auto; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    input, textarea, select { width:100%; padding:12px 14px; border-radius:10px; border:1px solid #1f2937; background:#0a0e1a; color:var(--text); font-size:14px; font-family:inherit; transition:border-color 0.2s; }
+    input:focus, textarea:focus, select:focus { outline:none; border-color:var(--accent); }
+    textarea { resize:vertical; min-height:180px; font-family:'Fira Code',monospace; font-size:13px; }
+    button { margin-top:14px; width:100%; padding:13px 18px; border:none; border-radius:10px; background:linear-gradient(135deg,#8b5cf6,#7c3aed); color:#fff; font-weight:700; font-size:15px; cursor:pointer; transition:transform 0.2s,box-shadow 0.2s; box-shadow:0 8px 24px rgba(139,92,246,0.3); }
+    button:hover { transform:translateY(-1px); box-shadow:0 12px 32px rgba(139,92,246,0.4); }
+    button:active { transform:translateY(0); }
+    button.secondary { background:linear-gradient(135deg,#06b6d4,#0891b2); box-shadow:0 8px 24px rgba(6,182,212,0.3); }
+    .result { background:#0a0e1a; border:1px solid #1f2937; border-radius:10px; padding:16px; margin:12px 0; min-height:60px; }
+    .status { display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:8px; font-weight:600; font-size:14px; margin-bottom:12px; }
+    .status.pass { background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3); }
+    .status.fail { background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3); }
+    .status.warn { background:rgba(251,146,60,0.15); color:#fb923c; border:1px solid rgba(251,146,60,0.3); }
+    .check-item { padding:10px 0; border-bottom:1px solid #1f2937; display:flex; align-items:start; gap:10px; }
+    .check-item:last-child { border-bottom:none; }
+    .check-icon { font-size:18px; margin-top:2px; }
+    .scenario { background:#0a0e1a; border:1px solid #1f2937; border-radius:8px; padding:14px; margin:10px 0; }
+    .scenario-title { font-weight:600; margin-bottom:8px; color:var(--accent); }
+    .code { background:#050810; border:1px solid #1f2937; border-radius:6px; padding:8px 10px; font-family:'Fira Code',monospace; font-size:12px; margin:6px 0; overflow-x:auto; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>🌐 CORS Header Validator</h1>
+      <p class="subtitle">Test and debug Cross-Origin Resource Sharing configurations with scenario analysis</p>
+    </div>
+    <div class="badge">Offline • Security Tool</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Request Configuration</h2>
+
+      <label for="origin">Origin (requesting domain)</label>
+      <input id="origin" type="text" value="https://example.com" placeholder="e.g., https://example.com" />
+
+      <label for="method">Request Method</label>
+      <select id="method">
+        <option value="GET">GET</option>
+        <option value="POST">POST</option>
+        <option value="PUT">PUT</option>
+        <option value="DELETE">DELETE</option>
+        <option value="PATCH">PATCH</option>
+        <option value="OPTIONS">OPTIONS</option>
+      </select>
+
+      <label for="headers">Custom Headers (comma-separated)</label>
+      <input id="headers" type="text" placeholder="e.g., X-Custom-Header, Authorization" />
+
+      <label for="credentials">Include Credentials</label>
+      <select id="credentials">
+        <option value="false">No (default)</option>
+        <option value="true">Yes (cookies/auth)</option>
+      </select>
+    </section>
+
+    <section class="card">
+      <h2>Response Headers</h2>
+
+      <label for="responseHeaders">CORS Response Headers</label>
+      <textarea id="responseHeaders" spellcheck="false" placeholder="Paste response headers here">Access-Control-Allow-Origin: https://example.com
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE
+Access-Control-Allow-Headers: Content-Type, Authorization
+Access-Control-Max-Age: 86400
+Access-Control-Allow-Credentials: true</textarea>
+
+      <button onclick="validate()">Validate CORS Configuration</button>
+      <button class="secondary" onclick="loadExample()">Load Example</button>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <h2>Validation Results</h2>
+      <div id="results">
+        <p style="color:var(--muted);">Configure request and response headers, then click "Validate CORS Configuration"</p>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <h2>Common Scenarios & Solutions</h2>
+      <div id="scenarios"></div>
+    </section>
+  </main>
+
+  <script>
+    const commonScenarios = [
+      {
+        title: "Simple Requests (GET, HEAD, POST with simple headers)",
+        solution: "Only Access-Control-Allow-Origin required",
+        example: "Access-Control-Allow-Origin: https://example.com"
+      },
+      {
+        title: "Preflight Requests (Custom headers, methods like PUT/DELETE)",
+        solution: "Must respond to OPTIONS with Allow-Methods and Allow-Headers",
+        example: "Access-Control-Allow-Methods: GET, POST, PUT, DELETE\nAccess-Control-Allow-Headers: Content-Type, Authorization"
+      },
+      {
+        title: "Credentials (cookies, authorization headers)",
+        solution: "Set Allow-Credentials: true AND specific origin (not *)",
+        example: "Access-Control-Allow-Origin: https://example.com\nAccess-Control-Allow-Credentials: true"
+      },
+      {
+        title: "Custom Response Headers",
+        solution: "Use Access-Control-Expose-Headers to expose custom headers",
+        example: "Access-Control-Expose-Headers: X-Custom-Header, X-Request-ID"
+      },
+      {
+        title: "Caching Preflight",
+        solution: "Set Max-Age to cache preflight responses (in seconds)",
+        example: "Access-Control-Max-Age: 86400"
+      }
+    ];
+
+    function parseHeaders(text) {
+      const headers = {};
+      text.split('\n').forEach(line => {
+        const idx = line.indexOf(':');
+        if (idx > 0) {
+          const key = line.slice(0, idx).trim().toLowerCase();
+          const value = line.slice(idx + 1).trim();
+          headers[key] = value;
+        }
+      });
+      return headers;
+    }
+
+    function validate() {
+      const origin = document.getElementById('origin').value.trim();
+      const method = document.getElementById('method').value;
+      const customHeaders = document.getElementById('headers').value.trim();
+      const withCredentials = document.getElementById('credentials').value === 'true';
+      const responseText = document.getElementById('responseHeaders').value;
+      const headers = parseHeaders(responseText);
+
+      const issues = [];
+      const warnings = [];
+      const passed = [];
+
+      // Check Access-Control-Allow-Origin
+      const allowOrigin = headers['access-control-allow-origin'];
+      if (!allowOrigin) {
+        issues.push("Missing Access-Control-Allow-Origin header");
+      } else if (withCredentials && allowOrigin === '*') {
+        issues.push("Cannot use wildcard (*) origin with credentials");
+      } else if (allowOrigin !== '*' && allowOrigin !== origin) {
+        issues.push(`Origin mismatch: Expected ${origin}, got ${allowOrigin}`);
+      } else {
+        passed.push(`Origin check passed: ${allowOrigin}`);
+      }
+
+      // Check credentials
+      const allowCredentials = headers['access-control-allow-credentials'];
+      if (withCredentials) {
+        if (allowCredentials !== 'true') {
+          issues.push("Access-Control-Allow-Credentials must be 'true' for credential requests");
+        } else {
+          passed.push("Credentials allowed correctly");
+        }
+      } else if (allowCredentials === 'true' && allowOrigin === '*') {
+        warnings.push("Allow-Credentials: true with wildcard origin will be rejected");
+      }
+
+      // Check methods for non-simple requests
+      const simpleMethods = ['GET', 'HEAD', 'POST'];
+      if (!simpleMethods.includes(method)) {
+        const allowMethods = headers['access-control-allow-methods'];
+        if (!allowMethods) {
+          issues.push(`Missing Access-Control-Allow-Methods for ${method} request`);
+        } else if (!allowMethods.toUpperCase().includes(method)) {
+          issues.push(`Method ${method} not allowed in: ${allowMethods}`);
+        } else {
+          passed.push(`Method ${method} is allowed`);
+        }
+      }
+
+      // Check custom headers
+      if (customHeaders) {
+        const allowHeaders = headers['access-control-allow-headers'];
+        if (!allowHeaders) {
+          issues.push("Custom headers present but Access-Control-Allow-Headers missing");
+        } else {
+          const requestedHeaders = customHeaders.toLowerCase().split(',').map(h => h.trim());
+          const allowedHeaders = allowHeaders.toLowerCase().split(',').map(h => h.trim());
+          requestedHeaders.forEach(h => {
+            if (!allowedHeaders.includes(h) && !['accept', 'accept-language', 'content-language', 'content-type'].includes(h)) {
+              issues.push(`Custom header "${h}" not in Allow-Headers`);
+            }
+          });
+          if (issues.length === 0) {
+            passed.push("Custom headers are allowed");
+          }
+        }
+      }
+
+      // Check max-age
+      const maxAge = headers['access-control-max-age'];
+      if (maxAge) {
+        const age = parseInt(maxAge);
+        if (age > 0) {
+          passed.push(`Preflight cached for ${age} seconds (${(age / 3600).toFixed(1)} hours)`);
+        }
+      } else if (!simpleMethods.includes(method) || customHeaders) {
+        warnings.push("Consider adding Access-Control-Max-Age to cache preflight requests");
+      }
+
+      // Check expose headers
+      const exposeHeaders = headers['access-control-expose-headers'];
+      if (exposeHeaders) {
+        passed.push(`Exposed headers: ${exposeHeaders}`);
+      }
+
+      renderResults(issues, warnings, passed);
+      renderScenarios();
+    }
+
+    function renderResults(issues, warnings, passed) {
+      let html = '';
+
+      if (issues.length === 0) {
+        html += '<div class="status pass">✅ CORS configuration is valid</div>';
+      } else {
+        html += '<div class="status fail">❌ CORS configuration has issues</div>';
+      }
+
+      if (issues.length > 0) {
+        html += '<div class="result"><h3 style="margin:0 0 12px;color:#ef4444;">Critical Issues</h3>';
+        issues.forEach(issue => {
+          html += `<div class="check-item"><span class="check-icon">❌</span><div>${issue}</div></div>`;
+        });
+        html += '</div>';
+      }
+
+      if (warnings.length > 0) {
+        html += '<div class="result"><h3 style="margin:0 0 12px;color:#fb923c;">Warnings</h3>';
+        warnings.forEach(warn => {
+          html += `<div class="check-item"><span class="check-icon">⚠️</span><div>${warn}</div></div>`;
+        });
+        html += '</div>';
+      }
+
+      if (passed.length > 0) {
+        html += '<div class="result"><h3 style="margin:0 0 12px;color:#22c55e;">Passed Checks</h3>';
+        passed.forEach(pass => {
+          html += `<div class="check-item"><span class="check-icon">✅</span><div>${pass}</div></div>`;
+        });
+        html += '</div>';
+      }
+
+      document.getElementById('results').innerHTML = html;
+    }
+
+    function renderScenarios() {
+      let html = '';
+      commonScenarios.forEach(scenario => {
+        html += `<div class="scenario">
+          <div class="scenario-title">${scenario.title}</div>
+          <div style="color:var(--muted);margin-bottom:8px;">${scenario.solution}</div>
+          <div class="code">${scenario.example}</div>
+        </div>`;
+      });
+      document.getElementById('scenarios').innerHTML = html;
+    }
+
+    function loadExample() {
+      document.getElementById('origin').value = 'https://app.example.com';
+      document.getElementById('method').value = 'POST';
+      document.getElementById('headers').value = 'Content-Type, Authorization, X-Custom-Header';
+      document.getElementById('credentials').value = 'true';
+      document.getElementById('responseHeaders').value = `Access-Control-Allow-Origin: https://app.example.com
+Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH
+Access-Control-Allow-Headers: Content-Type, Authorization, X-Custom-Header
+Access-Control-Allow-Credentials: true
+Access-Control-Max-Age: 86400
+Access-Control-Expose-Headers: X-Request-ID, X-RateLimit-Remaining`;
+      validate();
+    }
+
+    renderScenarios();
+  </script>
+</body>
+</html>

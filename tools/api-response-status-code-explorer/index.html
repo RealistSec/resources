@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Response Status Code Explorer</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0a1119; --panel:#111821; --text:#e5e7eb; --muted:#94a3b8; --accent:#3b82f6; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:linear-gradient(135deg,#0f1729 0%,#0a1119 100%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); }
+    main { padding:24px 32px 48px; max-width:1600px; margin:0 auto; }
+    .search { margin-bottom:24px; }
+    input { width:100%; padding:14px; border-radius:10px; border:1px solid #1f2937; background:#0a1119; color:var(--text); font-size:16px; }
+    .categories { display:flex; gap:12px; margin:20px 0; flex-wrap:wrap; }
+    .cat-btn { padding:10px 18px; border:1px solid #1f2937; border-radius:8px; background:rgba(59,130,246,0.08); cursor:pointer; font-weight:600; transition:all 0.2s; }
+    .cat-btn:hover, .cat-btn.active { background:rgba(59,130,246,0.2); border-color:var(--accent); }
+    .codes { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+    .code-card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:12px; padding:18px; cursor:pointer; transition:all 0.2s; }
+    .code-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.4); }
+    .code-num { font-size:32px; font-weight:800; margin-bottom:8px; }
+    .code-name { font-weight:700; font-size:16px; margin-bottom:6px; }
+    .code-desc { font-size:13px; color:var(--muted); line-height:1.5; }
+    .code-1xx .code-num { color:#3b82f6; }
+    .code-2xx .code-num { color:#22c55e; }
+    .code-3xx .code-num { color:#f59e0b; }
+    .code-4xx .code-num { color:#ef4444; }
+    .code-5xx .code-num { color:#a855f7; }
+    .modal { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center; padding:20px; }
+    .modal.show { display:flex; }
+    .modal-content { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:32px; max-width:700px; width:100%; max-height:90vh; overflow-y:auto; }
+    .close { float:right; font-size:28px; cursor:pointer; color:var(--muted); }
+    .close:hover { color:var(--text); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📡 API Response Status Code Explorer</h1>
+    <p class="subtitle">Complete reference for HTTP status codes with descriptions and use cases</p>
+  </header>
+
+  <main>
+    <div class="search">
+      <input id="search" type="text" placeholder="Search status codes (e.g., 404, not found, redirect)" oninput="filterCodes()" />
+    </div>
+
+    <div class="categories">
+      <div class="cat-btn active" data-cat="all" onclick="filterByCategory('all')">All</div>
+      <div class="cat-btn" data-cat="1xx" onclick="filterByCategory('1xx')">1xx Informational</div>
+      <div class="cat-btn" data-cat="2xx" onclick="filterByCategory('2xx')">2xx Success</div>
+      <div class="cat-btn" data-cat="3xx" onclick="filterByCategory('3xx')">3xx Redirection</div>
+      <div class="cat-btn" data-cat="4xx" onclick="filterByCategory('4xx')">4xx Client Error</div>
+      <div class="cat-btn" data-cat="5xx" onclick="filterByCategory('5xx')">5xx Server Error</div>
+    </div>
+
+    <div class="codes" id="codes"></div>
+  </main>
+
+  <div class="modal" id="modal" onclick="if(event.target===this) closeModal()">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <script>
+    const statusCodes = [
+      // 1xx Informational
+      { code: 100, name: 'Continue', desc: 'Client should continue with request', detail: 'The server has received the request headers and the client should proceed to send the request body. Used with Expect: 100-continue header.' },
+      { code: 101, name: 'Switching Protocols', desc: 'Server is switching protocols as requested', detail: 'Server acknowledges and agrees to switch protocols as requested by the client (e.g., upgrading to WebSocket).' },
+      { code: 102, name: 'Processing', desc: 'Server is processing the request', detail: 'WebDAV: Server has received and is processing the request, but no response is available yet.' },
+      { code: 103, name: 'Early Hints', desc: 'Used to return some response headers', detail: 'Allows server to send preliminary hints while preparing the full response, primarily for preloading resources.' },
+
+      // 2xx Success
+      { code: 200, name: 'OK', desc: 'Request succeeded', detail: 'Standard response for successful HTTP requests. The actual response will depend on the request method used.' },
+      { code: 201, name: 'Created', desc: 'Resource was created', detail: 'Request has been fulfilled and resulted in a new resource being created. Common for POST requests.' },
+      { code: 202, name: 'Accepted', desc: 'Request accepted for processing', detail: 'Request has been accepted but processing has not been completed. Used for async operations.' },
+      { code: 203, name: 'Non-Authoritative Info', desc: 'Transforming proxy modified response', detail: 'Server successfully processed request but is returning information from another source.' },
+      { code: 204, name: 'No Content', desc: 'Success but no content to return', detail: 'Server successfully processed request but returns no content. Common for DELETE requests.' },
+      { code: 205, name: 'Reset Content', desc: 'Reset the document view', detail: 'Server successfully processed request and asks client to reset document view (e.g., clear form).' },
+      { code: 206, name: 'Partial Content', desc: 'Partial GET was successful', detail: 'Server is delivering only part of the resource due to a range header sent by the client.' },
+
+      // 3xx Redirection
+      { code: 300, name: 'Multiple Choices', desc: 'Multiple options available', detail: 'Multiple response options for the resource. User or client should choose one of them.' },
+      { code: 301, name: 'Moved Permanently', desc: 'Resource permanently moved', detail: 'Requested resource has been permanently moved to the URL given by Location header. Future requests should use new URL.' },
+      { code: 302, name: 'Found', desc: 'Resource temporarily moved', detail: 'Resource temporarily resides under a different URL. Client should continue to use original URL for future requests.' },
+      { code: 303, name: 'See Other', desc: 'Response found at another URI', detail: 'Response can be found under a different URI and should be retrieved using GET. Used after POST to prevent resubmission.' },
+      { code: 304, name: 'Not Modified', desc: 'Resource not modified', detail: 'Resource has not been modified since last requested. Can use cached version.' },
+      { code: 307, name: 'Temporary Redirect', desc: 'Request should be repeated', detail: 'Request should be repeated with another URI, but future requests should still use original URI. Preserves HTTP method.' },
+      { code: 308, name: 'Permanent Redirect', desc: 'Resource permanently moved', detail: 'Request and all future requests should be repeated using another URI. Preserves HTTP method.' },
+
+      // 4xx Client Errors
+      { code: 400, name: 'Bad Request', desc: 'Server cannot process request', detail: 'Server cannot or will not process request due to client error (e.g., malformed syntax, invalid routing).' },
+      { code: 401, name: 'Unauthorized', desc: 'Authentication required', detail: 'Request requires user authentication. Similar to 403 but specifically for auth cases.' },
+      { code: 402, name: 'Payment Required', desc: 'Reserved for future use', detail: 'Reserved for future use with digital payment systems.' },
+      { code: 403, name: 'Forbidden', desc: 'Server refuses to fulfill', detail: 'Server understood request but refuses to authorize it. Unlike 401, authentication will not help.' },
+      { code: 404, name: 'Not Found', desc: 'Resource not found', detail: 'Requested resource could not be found but may be available again in the future.' },
+      { code: 405, name: 'Method Not Allowed', desc: 'Method not allowed for resource', detail: 'Request method is not supported for the requested resource (e.g., POST on read-only resource).' },
+      { code: 406, name: 'Not Acceptable', desc: 'Resource not acceptable', detail: 'Requested resource is only capable of generating content not acceptable according to Accept headers.' },
+      { code: 407, name: 'Proxy Auth Required', desc: 'Proxy authentication required', detail: 'Client must first authenticate with the proxy.' },
+      { code: 408, name: 'Request Timeout', desc: 'Server timed out waiting', detail: 'Server timed out waiting for the request from client.' },
+      { code: 409, name: 'Conflict', desc: 'Request conflicts with resource', detail: 'Request conflicts with current state of the server (e.g., version conflict).' },
+      { code: 410, name: 'Gone', desc: 'Resource no longer available', detail: 'Resource is no longer available and will not be available again. Should be used when resource is intentionally removed.' },
+      { code: 411, name: 'Length Required', desc: 'Content-Length required', detail: 'Request did not specify the length of its content, which is required.' },
+      { code: 412, name: 'Precondition Failed', desc: 'Precondition failed', detail: 'Server does not meet one of the preconditions specified in request headers.' },
+      { code: 413, name: 'Payload Too Large', desc: 'Request entity too large', detail: 'Request is larger than the server is willing or able to process.' },
+      { code: 414, name: 'URI Too Long', desc: 'URI too long', detail: 'URI provided was too long for the server to process.' },
+      { code: 415, name: 'Unsupported Media Type', desc: 'Media type not supported', detail: 'Request entity has a media type which server does not support.' },
+      { code: 416, name: 'Range Not Satisfiable', desc: 'Range cannot be satisfied', detail: 'Client has asked for portion of file but server cannot supply that portion.' },
+      { code: 417, name: 'Expectation Failed', desc: 'Expectation cannot be met', detail: 'Server cannot meet requirements of Expect request-header field.' },
+      { code: 418, name: "I'm a teapot", desc: 'April Fools joke (RFC 2324)', detail: "Any attempt to brew coffee with a teapot should result in error code 418. This is an April Fools' joke from 1998." },
+      { code: 422, name: 'Unprocessable Entity', desc: 'Validation errors', detail: 'Request was well-formed but contains semantic errors (e.g., validation errors).' },
+      { code: 423, name: 'Locked', desc: 'Resource is locked', detail: 'Resource being accessed is locked.' },
+      { code: 424, name: 'Failed Dependency', desc: 'Request failed due to dependency', detail: 'Request failed due to failure of a previous request.' },
+      { code: 425, name: 'Too Early', desc: 'Server unwilling to process', detail: 'Server is unwilling to risk processing a request that might be replayed.' },
+      { code: 426, name: 'Upgrade Required', desc: 'Client should switch protocols', detail: 'Client should switch to a different protocol given in Upgrade header field.' },
+      { code: 428, name: 'Precondition Required', desc: 'Request must be conditional', detail: 'Origin server requires request to be conditional to prevent lost update problem.' },
+      { code: 429, name: 'Too Many Requests', desc: 'User sent too many requests', detail: 'User has sent too many requests in a given amount of time (rate limiting).' },
+      { code: 431, name: 'Header Fields Too Large', desc: 'Headers too large', detail: 'Server unwilling to process request because header fields are too large.' },
+      { code: 451, name: 'Unavailable For Legal Reasons', desc: 'Content censored', detail: 'Resource is unavailable due to legal reasons (e.g., government censorship).' },
+
+      // 5xx Server Errors
+      { code: 500, name: 'Internal Server Error', desc: 'Generic server error', detail: 'Generic error message when server encounters unexpected condition.' },
+      { code: 501, name: 'Not Implemented', desc: 'Server lacks capability', detail: 'Server does not recognize request method or lacks ability to fulfill it.' },
+      { code: 502, name: 'Bad Gateway', desc: 'Invalid response from upstream', detail: 'Server acting as gateway received invalid response from upstream server.' },
+      { code: 503, name: 'Service Unavailable', desc: 'Server temporarily unavailable', detail: 'Server temporarily unable to handle request (overload or maintenance). Use Retry-After header.' },
+      { code: 504, name: 'Gateway Timeout', desc: 'Gateway timeout', detail: 'Server acting as gateway did not receive timely response from upstream server.' },
+      { code: 505, name: 'HTTP Version Not Supported', desc: 'HTTP version not supported', detail: 'Server does not support HTTP protocol version used in request.' },
+      { code: 506, name: 'Variant Also Negotiates', desc: 'Configuration error', detail: 'Transparent content negotiation for request results in circular reference.' },
+      { code: 507, name: 'Insufficient Storage', desc: 'Server out of storage', detail: 'Server is unable to store the representation needed to complete request.' },
+      { code: 508, name: 'Loop Detected', desc: 'Infinite loop detected', detail: 'Server detected an infinite loop while processing request.' },
+      { code: 510, name: 'Not Extended', desc: 'Extensions required', detail: 'Further extensions to the request are required for server to fulfill it.' },
+      { code: 511, name: 'Network Auth Required', desc: 'Network authentication required', detail: 'Client needs to authenticate to gain network access.' }
+    ];
+
+    let currentCategory = 'all';
+
+    function renderCodes() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const filtered = statusCodes.filter(code => {
+        const matchesSearch = search === '' ||
+          code.code.toString().includes(search) ||
+          code.name.toLowerCase().includes(search) ||
+          code.desc.toLowerCase().includes(search);
+
+        const matchesCategory = currentCategory === 'all' ||
+          code.code.toString().startsWith(currentCategory[0]);
+
+        return matchesSearch && matchesCategory;
+      });
+
+      const html = filtered.map(code => {
+        const category = `code-${code.code.toString()[0]}xx`;
+        return `<div class="code-card ${category}" onclick="showDetail(${code.code})">
+          <div class="code-num">${code.code}</div>
+          <div class="code-name">${code.name}</div>
+          <div class="code-desc">${code.desc}</div>
+        </div>`;
+      }).join('');
+
+      document.getElementById('codes').innerHTML = html || '<p style="color:var(--muted);grid-column:1/-1;text-align:center;padding:40px;">No matching status codes found</p>';
+    }
+
+    function filterCodes() {
+      renderCodes();
+    }
+
+    function filterByCategory(cat) {
+      currentCategory = cat;
+      document.querySelectorAll('.cat-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.cat === cat);
+      });
+      renderCodes();
+    }
+
+    function showDetail(code) {
+      const status = statusCodes.find(s => s.code === code);
+      if (!status) return;
+
+      const category = `code-${code.toString()[0]}xx`;
+      const html = `
+        <div class="${category}">
+          <div class="code-num" style="font-size:48px;">${status.code}</div>
+          <div class="code-name" style="font-size:24px;margin:12px 0;">${status.name}</div>
+          <div class="code-desc" style="font-size:16px;margin:16px 0;color:var(--text);">${status.desc}</div>
+          <div style="background:#0a1119;border:1px solid #1f2937;border-radius:8px;padding:16px;margin-top:20px;">
+            <h3 style="margin:0 0 12px;">Details</h3>
+            <p style="color:var(--muted);line-height:1.6;margin:0;">${status.detail}</p>
+          </div>
+          <div style="background:#0a1119;border:1px solid #1f2937;border-radius:8px;padding:16px;margin-top:16px;">
+            <h3 style="margin:0 0 12px;">Example Response</h3>
+            <pre style="background:#000;padding:12px;border-radius:6px;overflow-x:auto;margin:0;"><code>HTTP/1.1 ${status.code} ${status.name}
+Content-Type: application/json
+
+{
+  "error": "${status.name}",
+  "message": "${status.desc}"
+}</code></pre>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('modalContent').innerHTML = html;
+      document.getElementById('modal').classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('show');
+    }
+
+    renderCodes();
+  </script>
+</body>
+</html>

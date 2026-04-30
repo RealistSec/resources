@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GraphQL Schema Visualizer</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0c0a1e; --panel:#15122f; --text:#e5e7eb; --muted:#94a3b8; --accent:#e879f9; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:radial-gradient(circle at 15% 25%,#2d1b4e,#0c0a1e 65%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); }
+    main { padding:24px 32px 48px; max-width:1800px; margin:0 auto; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(450px,1fr)); gap:20px; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    textarea { width:100%; min-height:300px; padding:12px; border-radius:10px; border:1px solid #1f2937; background:#0c0a1e; color:var(--text); font-size:13px; font-family:'Fira Code',monospace; resize:vertical; }
+    button { margin-top:14px; width:100%; padding:13px; border:none; border-radius:10px; background:linear-gradient(135deg,#e879f9,#c026d3); color:#000; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(232,121,249,0.3); }
+    button:hover { transform:translateY(-1px); }
+    #canvas { width:100%; height:600px; background:#0c0a1e; border:1px solid #1f2937; border-radius:10px; }
+    .type-box { background:#15122f; border:1px solid #1f2937; border-radius:8px; padding:12px; margin:8px 0; }
+    .type-name { font-weight:700; color:var(--accent); margin-bottom:8px; }
+    .field { padding:4px 0; font-family:'Fira Code',monospace; font-size:13px; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔷 GraphQL Schema Visualizer</h1>
+    <p class="subtitle">Visualize GraphQL schemas with interactive diagrams and type exploration</p>
+  </header>
+
+  <main>
+    <div class="grid">
+      <section class="card">
+        <h2>GraphQL Schema (SDL)</h2>
+        <label for="schema">Paste your schema definition</label>
+        <textarea id="schema" spellcheck="false">schema {
+  query: Query
+  mutation: Mutation
+}
+
+type Query {
+  user(id: ID!): User
+  users: [User!]!
+  post(id: ID!): Post
+  posts(limit: Int): [Post!]!
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): User!
+  updateUser(id: ID!, input: UpdateUserInput!): User
+  deleteUser(id: ID!): Boolean!
+}
+
+type User {
+  id: ID!
+  name: String!
+  email: String!
+  posts: [Post!]!
+  createdAt: DateTime!
+}
+
+type Post {
+  id: ID!
+  title: String!
+  content: String!
+  author: User!
+  published: Boolean!
+  createdAt: DateTime!
+}
+
+input CreateUserInput {
+  name: String!
+  email: String!
+}
+
+input UpdateUserInput {
+  name: String
+  email: String
+}
+
+scalar DateTime</textarea>
+        <button onclick="visualize()">Visualize Schema</button>
+      </section>
+
+      <section class="card">
+        <h2>Schema Visualization</h2>
+        <canvas id="canvas"></canvas>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:20px;">
+      <h2>Type Explorer</h2>
+      <div id="types"></div>
+    </section>
+  </main>
+
+  <script>
+    function parseSchema(sdl) {
+      const types = [];
+      const typeRegex = /type\s+(\w+)\s*\{([^}]+)\}/gi;
+      const inputRegex = /input\s+(\w+)\s*\{([^}]+)\}/gi;
+      const enumRegex = /enum\s+(\w+)\s*\{([^}]+)\}/gi;
+      const scalarRegex = /scalar\s+(\w+)/gi;
+
+      let match;
+
+      while ((match = typeRegex.exec(sdl)) !== null) {
+        const [, name, body] = match;
+        const fields = body.trim().split('\n').map(line => line.trim()).filter(Boolean);
+        types.push({ kind: 'TYPE', name, fields });
+      }
+
+      while ((match = inputRegex.exec(sdl)) !== null) {
+        const [, name, body] = match;
+        const fields = body.trim().split('\n').map(line => line.trim()).filter(Boolean);
+        types.push({ kind: 'INPUT', name, fields });
+      }
+
+      while ((match = enumRegex.exec(sdl)) !== null) {
+        const [, name, body] = match;
+        const fields = body.trim().split('\n').map(line => line.trim()).filter(Boolean);
+        types.push({ kind: 'ENUM', name, fields });
+      }
+
+      while ((match = scalarRegex.exec(sdl)) !== null) {
+        types.push({ kind: 'SCALAR', name: match[1], fields: [] });
+      }
+
+      return types;
+    }
+
+    function visualize() {
+      const sdl = document.getElementById('schema').value;
+      const types = parseSchema(sdl);
+
+      renderCanvas(types);
+      renderTypeExplorer(types);
+    }
+
+    function renderCanvas(types) {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      ctx.scale(dpr, dpr);
+
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Draw background grid
+      ctx.strokeStyle = '#1f2937';
+      ctx.lineWidth = 0.5;
+      for (let x = 0; x < w; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Position types in a grid
+      const boxWidth = 180;
+      const boxHeight = 40;
+      const padding = 60;
+      const cols = Math.floor((w - padding) / (boxWidth + padding));
+
+      ctx.font = '14px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      types.forEach((type, idx) => {
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const x = padding + col * (boxWidth + padding);
+        const y = padding + row * (boxHeight + padding);
+
+        // Draw box
+        const colors = {
+          TYPE: '#e879f9',
+          INPUT: '#22d3ee',
+          ENUM: '#f59e0b',
+          SCALAR: '#10b981'
+        };
+        const color = colors[type.kind] || '#94a3b8';
+
+        ctx.fillStyle = '#15122f';
+        ctx.fillRect(x, y, boxWidth, boxHeight);
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, boxWidth, boxHeight);
+
+        // Draw text
+        ctx.fillStyle = color;
+        ctx.fillText(type.name, x + boxWidth / 2, y + boxHeight / 2 - 5);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px Inter, sans-serif';
+        ctx.fillText(type.kind, x + boxWidth / 2, y + boxHeight / 2 + 10);
+        ctx.font = '14px Inter, sans-serif';
+      });
+
+      // Draw connections for type relationships
+      ctx.strokeStyle = '#1f2937';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+
+      types.forEach((type, idx) => {
+        if (type.kind !== 'TYPE') return;
+
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const x1 = padding + col * (boxWidth + padding) + boxWidth / 2;
+        const y1 = padding + row * (boxHeight + padding) + boxHeight;
+
+        type.fields.forEach(field => {
+          const match = field.match(/:\s*\[?(\w+)/);
+          if (!match) return;
+          const refType = match[1];
+          const refIdx = types.findIndex(t => t.name === refType);
+          if (refIdx === -1) return;
+
+          const refCol = refIdx % cols;
+          const refRow = Math.floor(refIdx / cols);
+          const x2 = padding + refCol * (boxWidth + padding) + boxWidth / 2;
+          const y2 = padding + refRow * (boxHeight + padding);
+
+          ctx.beginPath();
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.stroke();
+        });
+      });
+
+      ctx.setLineDash([]);
+    }
+
+    function renderTypeExplorer(types) {
+      let html = '';
+
+      types.forEach(type => {
+        html += `<div class="type-box">`;
+        html += `<div class="type-name">${type.kind}: ${type.name}</div>`;
+        if (type.fields.length > 0) {
+          type.fields.forEach(field => {
+            html += `<div class="field">${field}</div>`;
+          });
+        } else {
+          html += `<div class="field" style="color:var(--muted);">No fields</div>`;
+        }
+        html += `</div>`;
+      });
+
+      document.getElementById('types').innerHTML = html;
+    }
+
+    visualize();
+  </script>
+</body>
+</html>
