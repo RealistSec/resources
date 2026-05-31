@@ -146,8 +146,15 @@
 
     function switchTab(tab) {
       currentTab = tab;
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      event.target.classList.add('active');
+      document.querySelectorAll('.tab').forEach(t => {
+        const dataTab = t.getAttribute('data-tab');
+        const onClick = t.getAttribute('onclick') || '';
+        const matchesTab = dataTab === tab ||
+          onClick.includes(`switchTab('${tab}')`) ||
+          onClick.includes(`switchTab("${tab}")`);
+
+        t.classList.toggle('active', matchesTab);
+      });
       render();
     }
 
