@@ -230,40 +230,57 @@ Access-Control-Allow-Credentials: true</textarea>
       renderScenarios();
     }
 
-    function renderResults(issues, warnings, passed) {
-      let html = '';
+    function createResultSection(title, color, icon, messages) {
+      const section = document.createElement('div');
+      section.className = 'result';
 
-      if (issues.length === 0) {
-        html += '<div class="status pass">✅ CORS configuration is valid</div>';
-      } else {
-        html += '<div class="status fail">❌ CORS configuration has issues</div>';
-      }
+      const heading = document.createElement('h3');
+      heading.style.margin = '0 0 12px';
+      heading.style.color = color;
+      heading.textContent = title;
+      section.appendChild(heading);
+
+      messages.forEach(message => {
+        const item = document.createElement('div');
+        item.className = 'check-item';
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'check-icon';
+        iconSpan.textContent = icon;
+
+        const text = document.createElement('div');
+        text.textContent = message;
+
+        item.appendChild(iconSpan);
+        item.appendChild(text);
+        section.appendChild(item);
+      });
+
+      return section;
+    }
+
+    function renderResults(issues, warnings, passed) {
+      const results = document.getElementById('results');
+      results.replaceChildren();
+
+      const status = document.createElement('div');
+      status.className = issues.length === 0 ? 'status pass' : 'status fail';
+      status.textContent = issues.length === 0
+        ? '✅ CORS configuration is valid'
+        : '❌ CORS configuration has issues';
+      results.appendChild(status);
 
       if (issues.length > 0) {
-        html += '<div class="result"><h3 style="margin:0 0 12px;color:#ef4444;">Critical Issues</h3>';
-        issues.forEach(issue => {
-          html += `<div class="check-item"><span class="check-icon">❌</span><div>${issue}</div></div>`;
-        });
-        html += '</div>';
+        results.appendChild(createResultSection('Critical Issues', '#ef4444', '❌', issues));
       }
 
       if (warnings.length > 0) {
-        html += '<div class="result"><h3 style="margin:0 0 12px;color:#fb923c;">Warnings</h3>';
-        warnings.forEach(warn => {
-          html += `<div class="check-item"><span class="check-icon">⚠️</span><div>${warn}</div></div>`;
-        });
-        html += '</div>';
+        results.appendChild(createResultSection('Warnings', '#fb923c', '⚠️', warnings));
       }
 
       if (passed.length > 0) {
-        html += '<div class="result"><h3 style="margin:0 0 12px;color:#22c55e;">Passed Checks</h3>';
-        passed.forEach(pass => {
-          html += `<div class="check-item"><span class="check-icon">✅</span><div>${pass}</div></div>`;
-        });
-        html += '</div>';
+        results.appendChild(createResultSection('Passed Checks', '#22c55e', '✅', passed));
       }
-
-      document.getElementById('results').innerHTML = html;
     }
 
     function renderScenarios() {
