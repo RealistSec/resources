@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SNMP OID Translator</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0a1420; --panel:#0f1a2f; --text:#e5e7eb; --muted:#94a3b8; --accent:#10b981; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:radial-gradient(circle at 15% 30%,#1a3a3f,#0a1420 70%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); }
+    main { padding:24px 32px 48px; max-width:1600px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(450px,1fr)); gap:20px; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    input { width:100%; padding:12px; border-radius:10px; border:1px solid #1f2937; background:#0a1420; color:var(--text); font-size:14px; font-family:'Fira Code',monospace; }
+    button { margin-top:14px; width:100%; padding:13px; border:none; border-radius:10px; background:linear-gradient(135deg,#10b981,#059669); color:#fff; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(16,185,129,0.3); }
+    button:hover { transform:translateY(-1px); }
+    .result { background:#0a1420; border:1px solid #1f2937; border-radius:10px; padding:16px; margin:12px 0; }
+    .oid-name { font-weight:700; color:var(--accent); font-size:18px; margin-bottom:8px; }
+    .oid-path { font-family:'Fira Code',monospace; font-size:13px; color:var(--muted); margin:4px 0; }
+    .oid-desc { color:var(--text); font-size:14px; line-height:1.6; margin:12px 0; }
+    .common-oid { background:rgba(16,185,129,0.08); border:1px solid #1f2937; border-radius:8px; padding:12px; margin:8px 0; cursor:pointer; transition:all 0.2s; }
+    .common-oid:hover { background:rgba(16,185,129,0.15); border-color:var(--accent); }
+    .common-oid-name { font-weight:600; color:var(--accent); }
+    .common-oid-num { font-family:'Fira Code',monospace; font-size:12px; color:var(--muted); margin-top:4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔢 SNMP OID Translator</h1>
+    <p class="subtitle">Translate SNMP Object Identifiers between numeric and descriptive formats with MIB database</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>OID Lookup</h2>
+
+      <label for="oid">Enter OID (numeric or name)</label>
+      <input id="oid" type="text" placeholder="e.g., 1.3.6.1.2.1.1.1.0 or sysDescr.0" value="1.3.6.1.2.1.1.1.0" />
+
+      <button onclick="lookup()">Translate OID</button>
+    </section>
+
+    <section class="card">
+      <h2>Result</h2>
+      <div id="result">
+        <p style="color:var(--muted);">Enter an OID to see translation</p>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <h2>Common SNMP OIDs</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;">
+        <div class="common-oid" onclick="selectOid('1.3.6.1.2.1.1.1.0')">
+          <div class="common-oid-name">System Description</div>
+          <div class="common-oid-num">1.3.6.1.2.1.1.1.0 (sysDescr)</div>
+        </div>
+        <div class="common-oid" onclick="selectOid('1.3.6.1.2.1.1.3.0')">
+          <div class="common-oid-name">System Uptime</div>
+          <div class="common-oid-num">1.3.6.1.2.1.1.3.0 (sysUpTime)</div>
+        </div>
+        <div class="common-oid" onclick="selectOid('1.3.6.1.2.1.1.5.0')">
+          <div class="common-oid-name">System Name</div>
+          <div class="common-oid-num">1.3.6.1.2.1.1.5.0 (sysName)</div>
+        </div>
+        <div class="common-oid" onclick="selectOid('1.3.6.1.2.1.2.1.0')">
+          <div class="common-oid-name">Interface Count</div>
+          <div class="common-oid-num">1.3.6.1.2.1.2.1.0 (ifNumber)</div>
+        </div>
+        <div class="common-oid" onclick="selectOid('1.3.6.1.2.1.25.1.1.0')">
+          <div class="common-oid-name">Host Uptime</div>
+          <div class="common-oid-num">1.3.6.1.2.1.25.1.1.0 (hrSystemUptime)</div>
+        </div>
+        <div class="common-oid" onclick="selectOid('1.3.6.1.2.1.25.2.3.1.3.1')">
+          <div class="common-oid-name">Storage Description</div>
+          <div class="common-oid-num">1.3.6.1.2.1.25.2.3.1.3 (hrStorageDescr)</div>
+        </div>
+        <div class="common-oid" onclick="selectOid('1.3.6.1.2.1.25.3.2.1.3.1')">
+          <div class="common-oid-name">CPU Load</div>
+          <div class="common-oid-num">1.3.6.1.2.1.25.3.3.1.2 (hrProcessorLoad)</div>
+        </div>
+        <div class="common-oid" onclick="selectOid('1.3.6.1.4.1')">
+          <div class="common-oid-name">Enterprise OIDs</div>
+          <div class="common-oid-num">1.3.6.1.4.1 (enterprises)</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <h2>SNMP MIB Tree Structure</h2>
+      <div class="result">
+        <div style="font-family:'Fira Code',monospace;font-size:13px;line-height:1.8;">
+          <div>1 - iso</div>
+          <div>&nbsp;&nbsp;3 - org</div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;6 - dod</div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1 - internet</div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1 - directory</div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2 - mgmt (standard MIBs)</div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1 - mib-2 (MIB-II)</div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1 - system</div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2 - interfaces</div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;25 - host</div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3 - experimental</div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4 - private</div>
+          <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1 - enterprises (vendor-specific MIBs)</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const oidDatabase = {
+      '1.3.6.1.2.1.1.1.0': { name: 'sysDescr.0', desc: 'A textual description of the entity including hardware type, OS, and networking software', category: 'System' },
+      '1.3.6.1.2.1.1.2.0': { name: 'sysObjectID.0', desc: 'Vendor authoritative identification of the network management subsystem', category: 'System' },
+      '1.3.6.1.2.1.1.3.0': { name: 'sysUpTime.0', desc: 'Time since the network management portion of the system was last re-initialized', category: 'System' },
+      '1.3.6.1.2.1.1.4.0': { name: 'sysContact.0', desc: 'Contact person for this managed node', category: 'System' },
+      '1.3.6.1.2.1.1.5.0': { name: 'sysName.0', desc: 'Administratively assigned name for this managed node', category: 'System' },
+      '1.3.6.1.2.1.1.6.0': { name: 'sysLocation.0', desc: 'Physical location of this node', category: 'System' },
+      '1.3.6.1.2.1.2.1.0': { name: 'ifNumber.0', desc: 'Number of network interfaces present on this system', category: 'Interfaces' },
+      '1.3.6.1.2.1.2.2.1.2': { name: 'ifDescr', desc: 'Textual description of the interface', category: 'Interfaces' },
+      '1.3.6.1.2.1.2.2.1.5': { name: 'ifSpeed', desc: 'Estimate of interfaces current bandwidth in bits per second', category: 'Interfaces' },
+      '1.3.6.1.2.1.2.2.1.7': { name: 'ifAdminStatus', desc: 'Desired state of the interface (up/down/testing)', category: 'Interfaces' },
+      '1.3.6.1.2.1.2.2.1.8': { name: 'ifOperStatus', desc: 'Current operational state of the interface', category: 'Interfaces' },
+      '1.3.6.1.2.1.2.2.1.10': { name: 'ifInOctets', desc: 'Total number of octets received on the interface', category: 'Interfaces' },
+      '1.3.6.1.2.1.2.2.1.16': { name: 'ifOutOctets', desc: 'Total number of octets transmitted out of the interface', category: 'Interfaces' },
+      '1.3.6.1.2.1.4.20.1.1': { name: 'ipAdEntAddr', desc: 'IP address to which this entry pertains', category: 'IP' },
+      '1.3.6.1.2.1.25.1.1.0': { name: 'hrSystemUptime.0', desc: 'Amount of time since this host was last initialized', category: 'Host Resources' },
+      '1.3.6.1.2.1.25.2.2.0': { name: 'hrMemorySize.0', desc: 'Amount of physical main memory contained by the host', category: 'Host Resources' },
+      '1.3.6.1.2.1.25.2.3.1.3': { name: 'hrStorageDescr', desc: 'Description of the storage unit', category: 'Host Resources' },
+      '1.3.6.1.2.1.25.2.3.1.5': { name: 'hrStorageSize', desc: 'Size of the storage represented by this entry in units', category: 'Host Resources' },
+      '1.3.6.1.2.1.25.2.3.1.6': { name: 'hrStorageUsed', desc: 'Amount of storage used in this storage unit', category: 'Host Resources' },
+      '1.3.6.1.2.1.25.3.2.1.3': { name: 'hrDeviceDescr', desc: 'Textual description of this device', category: 'Host Resources' },
+      '1.3.6.1.2.1.25.3.3.1.2': { name: 'hrProcessorLoad', desc: 'Average CPU utilization over the last minute', category: 'Host Resources' },
+      '1.3.6.1.4.1': { name: 'enterprises', desc: 'Private enterprise OID space for vendor-specific MIBs', category: 'Private' }
+    };
+
+    function selectOid(oid) {
+      document.getElementById('oid').value = oid;
+      lookup();
+    }
+
+    function lookup() {
+      const input = document.getElementById('oid').value.trim();
+      let oid = input;
+      let found = null;
+
+      // Check if input is numeric OID
+      if (/^[\d.]+$/.test(input)) {
+        found = oidDatabase[input];
+        // Also check partial match
+        if (!found) {
+          for (const [key, value] of Object.entries(oidDatabase)) {
+            if (key.startsWith(input) || input.startsWith(key)) {
+              found = { ...value, oid: key, partial: true };
+              break;
+            }
+          }
+        } else {
+          found = { ...found, oid: input };
+        }
+      } else {
+        // Search by name
+        for (const [key, value] of Object.entries(oidDatabase)) {
+          if (value.name.toLowerCase().includes(input.toLowerCase()) || input.toLowerCase().includes(value.name.toLowerCase().split('.')[0])) {
+            found = { ...value, oid: key };
+            oid = key;
+            break;
+          }
+        }
+      }
+
+      let html = '';
+
+      if (found) {
+        html += `<div class="result">`;
+        html += `<div class="oid-name">${found.name}</div>`;
+        html += `<div class="oid-path">${found.oid}</div>`;
+        html += `<div style="margin:12px 0;"><span style="background:rgba(16,185,129,0.15);padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;color:var(--accent);">${found.category}</span></div>`;
+        html += `<div class="oid-desc">${found.desc}</div>`;
+
+        // Show OID path breakdown
+        const parts = found.oid.split('.');
+        html += `<div style="margin-top:16px;padding-top:16px;border-top:1px solid #1f2937;">`;
+        html += `<div style="font-weight:600;margin-bottom:8px;">OID Path:</div>`;
+        html += `<div style="font-family:'Fira Code',monospace;font-size:12px;color:var(--muted);">`;
+        const pathNames = ['iso', 'org', 'dod', 'internet', 'mgmt', 'mib-2'];
+        parts.slice(0, Math.min(parts.length, 7)).forEach((part, i) => {
+          html += `${part}${i < pathNames.length ? ` (${pathNames[i]})` : ''} ${i < parts.length - 1 ? '→ ' : ''}`;
+        });
+        html += `</div></div>`;
+
+        html += `<div style="margin-top:16px;padding-top:16px;border-top:1px solid #1f2937;">`;
+        html += `<div style="font-weight:600;margin-bottom:8px;">SNMP Query Example:</div>`;
+        html += `<div style="background:#000;border-radius:6px;padding:12px;font-family:'Fira Code',monospace;font-size:12px;overflow-x:auto;">`;
+        html += `snmpget -v2c -c public localhost ${found.oid}<br>`;
+        html += `snmpwalk -v2c -c public localhost ${found.oid.split('.').slice(0, -1).join('.')}`;
+        html += `</div></div>`;
+
+        html += `</div>`;
+      } else {
+        html += `<div class="result">`;
+        html += `<div style="color:var(--muted);">`;
+        html += `<strong>OID not found in database</strong><br><br>`;
+        html += `Entered: <span style="font-family:'Fira Code',monospace;">${oid}</span><br><br>`;
+        html += `This OID may be valid but not in our database. Common SNMP OID ranges:<br>`;
+        html += `• 1.3.6.1.2.1.1.x - System group<br>`;
+        html += `• 1.3.6.1.2.1.2.x - Interfaces group<br>`;
+        html += `• 1.3.6.1.2.1.25.x - Host resources<br>`;
+        html += `• 1.3.6.1.4.1.x - Private enterprises`;
+        html += `</div></div>`;
+      }
+
+      document.getElementById('result').innerHTML = html;
+    }
+
+    lookup();
+  </script>
+</body>
+</html>

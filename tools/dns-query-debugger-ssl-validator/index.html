@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNS Query Debugger + SSL Validator</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0a1628; --panel:#0f1f38; --text:#e5e7eb; --muted:#94a3b8; --accent:#0ea5e9; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:radial-gradient(circle at 25% 20%,#1e3a5f,#0a1628 70%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); }
+    main { padding:24px 32px 48px; display:grid; grid-template-columns:repeat(auto-fit,minmax(450px,1fr)); gap:20px; max-width:1800px; margin:0 auto; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    input, select { width:100%; padding:12px; border-radius:10px; border:1px solid #1f2937; background:#0a1628; color:var(--text); font-size:14px; font-family:inherit; }
+    button { margin-top:14px; width:100%; padding:13px; border:none; border-radius:10px; background:linear-gradient(135deg,#0ea5e9,#0284c7); color:#fff; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(14,165,233,0.3); }
+    button:hover { transform:translateY(-1px); }
+    .result { background:#0a1628; border:1px solid #1f2937; border-radius:10px; padding:16px; margin:12px 0; }
+    .result-item { padding:8px 0; border-bottom:1px solid #1f2937; display:flex; justify-content:space-between; gap:10px; }
+    .result-item:last-child { border-bottom:none; }
+    .label { color:var(--muted); font-weight:600; }
+    .value { font-family:'Fira Code',monospace; font-size:13px; word-break:break-all; }
+    .status { display:inline-flex; padding:6px 12px; border-radius:8px; font-size:13px; font-weight:600; }
+    .status.valid { background:rgba(34,197,94,0.15); color:#22c55e; }
+    .status.invalid { background:rgba(239,68,68,0.15); color:#ef4444; }
+    .status.warning { background:rgba(251,146,60,0.15); color:#fb923c; }
+    .tabs { display:flex; gap:8px; margin-bottom:16px; border-bottom:1px solid #1f2937; }
+    .tab { padding:10px 16px; cursor:pointer; border-bottom:2px solid transparent; font-weight:600; color:var(--muted); }
+    .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌐 DNS Query Debugger + SSL Validator</h1>
+    <p class="subtitle">Debug DNS records and validate SSL/TLS certificates with detailed analysis</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('dns')">DNS Query</div>
+        <div class="tab" onclick="switchTab('ssl')">SSL Validator</div>
+      </div>
+
+      <div id="dnsPanel">
+        <label for="domain">Domain</label>
+        <input id="domain" type="text" placeholder="example.com" />
+
+        <label for="recordType">Record Type</label>
+        <select id="recordType">
+          <option value="A">A (IPv4)</option>
+          <option value="AAAA">AAAA (IPv6)</option>
+          <option value="CNAME">CNAME (Canonical Name)</option>
+          <option value="MX">MX (Mail Exchange)</option>
+          <option value="TXT">TXT (Text)</option>
+          <option value="NS">NS (Name Server)</option>
+          <option value="SOA">SOA (Start of Authority)</option>
+          <option value="CAA">CAA (Certificate Authority)</option>
+        </select>
+
+        <button onclick="queryDNS()">Query DNS</button>
+      </div>
+
+      <div id="sslPanel" style="display:none;">
+        <label for="hostname">Hostname</label>
+        <input id="hostname" type="text" placeholder="example.com" />
+
+        <label for="port">Port</label>
+        <input id="port" type="number" value="443" />
+
+        <p style="color:var(--muted);font-size:13px;margin-top:8px;">
+          ⚠️ Note: Due to browser security, this is a simulation. For real SSL validation, use command-line tools like <code>openssl s_client</code> or online validators.
+        </p>
+
+        <button onclick="validateSSL()">Validate SSL Certificate</button>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <h2>Results</h2>
+      <div id="results">
+        <p style="color:var(--muted);">Enter a domain and click Query DNS or Validate SSL to see results</p>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <h2>Common DNS Record Types</h2>
+      <div class="result">
+        <div class="result-item">
+          <span class="label">A</span>
+          <span class="value">Maps domain to IPv4 address</span>
+        </div>
+        <div class="result-item">
+          <span class="label">AAAA</span>
+          <span class="value">Maps domain to IPv6 address</span>
+        </div>
+        <div class="result-item">
+          <span class="label">CNAME</span>
+          <span class="value">Alias to another domain (canonical name)</span>
+        </div>
+        <div class="result-item">
+          <span class="label">MX</span>
+          <span class="value">Mail exchange servers with priority</span>
+        </div>
+        <div class="result-item">
+          <span class="label">TXT</span>
+          <span class="value">Text records for verification, SPF, DKIM, etc.</span>
+        </div>
+        <div class="result-item">
+          <span class="label">NS</span>
+          <span class="value">Name servers for the domain</span>
+        </div>
+        <div class="result-item">
+          <span class="label">SOA</span>
+          <span class="value">Start of Authority with zone information</span>
+        </div>
+        <div class="result-item">
+          <span class="label">CAA</span>
+          <span class="value">Certificate Authority Authorization</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let currentTab = 'dns';
+
+    // Sample DNS data for demonstration
+    const sampleDNS = {
+      'example.com': {
+        A: ['93.184.216.34'],
+        AAAA: ['2606:2800:220:1:248:1893:25c8:1946'],
+        MX: ['0 .', '10 mail.example.com'],
+        NS: ['a.iana-servers.net', 'b.iana-servers.net'],
+        TXT: ['v=spf1 -all', 'example-verification=12345'],
+        SOA: ['a.iana-servers.net hostmaster.example.com 2023010100 7200 3600 1209600 3600']
+      },
+      'github.com': {
+        A: ['140.82.121.4'],
+        MX: ['1 aspmx.l.google.com', '5 alt1.aspmx.l.google.com'],
+        NS: ['dns1.p08.nsone.net', 'dns2.p08.nsone.net'],
+        TXT: ['v=spf1 include:_spf.google.com ~all']
+      }
+    };
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+
+      document.getElementById('dnsPanel').style.display = tab === 'dns' ? 'block' : 'none';
+      document.getElementById('sslPanel').style.display = tab === 'ssl' ? 'block' : 'none';
+    }
+
+    function queryDNS() {
+      const domain = document.getElementById('domain').value.trim().toLowerCase();
+      const recordType = document.getElementById('recordType').value;
+
+      if (!domain) {
+        alert('Please enter a domain');
+        return;
+      }
+
+      // Simulate DNS query
+      let html = `<h3 style="margin:0 0 16px;">DNS Query: ${domain} (${recordType})</h3>`;
+
+      const records = sampleDNS[domain];
+      if (records && records[recordType]) {
+        html += `<div class="status valid">✓ Records Found</div>`;
+        html += `<div class="result">`;
+        records[recordType].forEach(record => {
+          html += `<div class="result-item">
+            <span class="label">${recordType}</span>
+            <span class="value">${record}</span>
+          </div>`;
+        });
+        html += `</div>`;
+      } else {
+        html += `<div class="status warning">⚠ Using sample data</div>`;
+        html += `<div class="result">`;
+        html += `<p style="color:var(--muted);">This is a client-side tool using sample data. For real DNS queries, use:</p>`;
+        html += `<div style="margin-top:12px;background:#0a1628;border:1px solid #1f2937;border-radius:8px;padding:12px;">`;
+        html += `<div style="font-family:'Fira Code',monospace;font-size:13px;">`;
+        html += `# Using dig (Linux/Mac)<br>`;
+        html += `dig ${domain} ${recordType}<br><br>`;
+        html += `# Using nslookup (Windows)<br>`;
+        html += `nslookup -type=${recordType} ${domain}<br><br>`;
+        html += `# Using host (Linux/Mac)<br>`;
+        html += `host -t ${recordType} ${domain}`;
+        html += `</div></div>`;
+        html += `</div>`;
+      }
+
+      // Add DNS propagation check info
+      html += `<div class="result" style="margin-top:16px;">`;
+      html += `<h4 style="margin:0 0 12px;">DNS Propagation Check</h4>`;
+      html += `<p style="color:var(--muted);font-size:14px;">DNS changes can take 24-48 hours to propagate globally. Check propagation at:</p>`;
+      html += `<ul style="color:var(--muted);font-size:14px;"><li>dnschecker.org</li><li>whatsmydns.net</li></ul>`;
+      html += `</div>`;
+
+      document.getElementById('results').innerHTML = html;
+    }
+
+    function validateSSL() {
+      const hostname = document.getElementById('hostname').value.trim();
+      const port = document.getElementById('port').value || '443';
+
+      if (!hostname) {
+        alert('Please enter a hostname');
+        return;
+      }
+
+      // Simulate SSL validation
+      let html = `<h3 style="margin:0 0 16px;">SSL Certificate Check: ${hostname}:${port}</h3>`;
+
+      html += `<div class="status valid">✓ Simulation Mode</div>`;
+
+      html += `<div class="result">`;
+      html += `<h4 style="margin:0 0 12px;">Certificate Information</h4>`;
+      html += `<div class="result-item">
+        <span class="label">Subject</span>
+        <span class="value">CN=${hostname}</span>
+      </div>`;
+      html += `<div class="result-item">
+        <span class="label">Issuer</span>
+        <span class="value">Let's Encrypt Authority X3</span>
+      </div>`;
+      html += `<div class="result-item">
+        <span class="label">Valid From</span>
+        <span class="value">${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}</span>
+      </div>`;
+      html += `<div class="result-item">
+        <span class="label">Valid Until</span>
+        <span class="value">${new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}</span>
+      </div>`;
+      html += `<div class="result-item">
+        <span class="label">Protocol</span>
+        <span class="value">TLS 1.3</span>
+      </div>`;
+      html += `<div class="result-item">
+        <span class="label">Cipher Suite</span>
+        <span class="value">TLS_AES_256_GCM_SHA384</span>
+      </div>`;
+      html += `</div>`;
+
+      html += `<div class="result" style="margin-top:16px;">`;
+      html += `<h4 style="margin:0 0 12px;">For Real SSL Validation</h4>`;
+      html += `<p style="color:var(--muted);font-size:14px;">Use these command-line tools:</p>`;
+      html += `<div style="background:#0a1628;border:1px solid #1f2937;border-radius:8px;padding:12px;font-family:'Fira Code',monospace;font-size:13px;margin-top:8px;">`;
+      html += `# OpenSSL<br>`;
+      html += `openssl s_client -connect ${hostname}:${port} -servername ${hostname}<br><br>`;
+      html += `# Check expiry<br>`;
+      html += `echo | openssl s_client -connect ${hostname}:${port} 2>/dev/null | openssl x509 -noout -dates<br><br>`;
+      html += `# Full certificate details<br>`;
+      html += `echo | openssl s_client -connect ${hostname}:${port} 2>/dev/null | openssl x509 -noout -text`;
+      html += `</div>`;
+      html += `<p style="color:var(--muted);font-size:14px;margin-top:12px;">Online tools:</p>`;
+      html += `<ul style="color:var(--muted);font-size:14px;">`;
+      html += `<li>SSL Labs Server Test (ssllabs.com/ssltest)</li>`;
+      html += `<li>SSL Checker (sslshopper.com/ssl-checker.html)</li>`;
+      html += `</ul>`;
+      html += `</div>`;
+
+      html += `<div class="result" style="margin-top:16px;">`;
+      html += `<h4 style="margin:0 0 12px;">Common SSL Issues</h4>`;
+      html += `<div class="result-item">
+        <span class="label">Expired Certificate</span>
+        <span class="value">Renew before expiry date</span>
+      </div>`;
+      html += `<div class="result-item">
+        <span class="label">Name Mismatch</span>
+        <span class="value">Certificate CN must match hostname</span>
+      </div>`;
+      html += `<div class="result-item">
+        <span class="label">Untrusted CA</span>
+        <span class="value">Use certificates from trusted CAs</span>
+      </div>`;
+      html += `<div class="result-item">
+        <span class="label">Weak Ciphers</span>
+        <span class="value">Disable SSLv3, TLS 1.0/1.1</span>
+      </div>`;
+      html += `</div>`;
+
+      document.getElementById('results').innerHTML = html;
+    }
+
+    // Load sample query on startup
+    document.getElementById('domain').value = 'example.com';
+  </script>
+</body>
+</html>

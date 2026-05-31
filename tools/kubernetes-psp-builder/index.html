@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kubernetes PSP Builder</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0a0f1a; --panel:#10172a; --text:#e5e7eb; --muted:#94a3b8; --accent:#3b82f6; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:radial-gradient(circle at 25% 20%,#1a2f4f,#0a0f1a 70%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); }
+    main { padding:24px 32px 48px; max-width:1600px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(450px,1fr)); gap:20px; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    input, select, textarea { width:100%; padding:12px; border-radius:10px; border:1px solid #1f2937; background:#0a0f1a; color:var(--text); font-size:14px; font-family:inherit; }
+    textarea { min-height:100px; resize:vertical; }
+    .toggle { display:flex; align-items:center; gap:8px; margin:12px 0; }
+    input[type="checkbox"] { width:20px; height:20px; cursor:pointer; }
+    button { margin-top:14px; width:100%; padding:13px; border:none; border-radius:10px; background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(59,130,246,0.3); }
+    button:hover { transform:translateY(-1px); }
+    button.secondary { background:linear-gradient(135deg,#8b5cf6,#7c3aed); box-shadow:0 8px 24px rgba(139,92,246,0.3); }
+    pre { background:#0a0f1a; border:1px solid #1f2937; border-radius:10px; padding:16px; min-height:300px; max-height:600px; overflow-y:auto; font-family:'Fira Code',monospace; font-size:13px; line-height:1.6; white-space:pre-wrap; }
+    .preset-btn { padding:10px; border:1px solid #1f2937; border-radius:8px; background:rgba(59,130,246,0.08); cursor:pointer; text-align:center; transition:all 0.2s; margin:4px; }
+    .preset-btn:hover { background:rgba(59,130,246,0.15); border-color:var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>☸️ Kubernetes PSP Builder</h1>
+    <p class="subtitle">Build Pod Security Policies with security best practices and YAML generation</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Policy Configuration</h2>
+
+      <label for="policyName">Policy Name</label>
+      <input id="policyName" type="text" placeholder="restrictive-policy" value="restrictive-policy" />
+
+      <label>Security Presets</label>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+        <div class="preset-btn" onclick="loadPreset('baseline')">Baseline</div>
+        <div class="preset-btn" onclick="loadPreset('restricted')">Restricted</div>
+        <div class="preset-btn" onclick="loadPreset('privileged')">Privileged</div>
+        <div class="preset-btn" onclick="loadPreset('custom')">Custom</div>
+      </div>
+
+      <div class="toggle">
+        <input type="checkbox" id="privileged" onchange="generate()" />
+        <label for="privileged" style="margin:0;">Allow Privileged Containers</label>
+      </div>
+
+      <div class="toggle">
+        <input type="checkbox" id="hostNetwork" onchange="generate()" />
+        <label for="hostNetwork" style="margin:0;">Allow Host Network</label>
+      </div>
+
+      <div class="toggle">
+        <input type="checkbox" id="hostPID" onchange="generate()" />
+        <label for="hostPID" style="margin:0;">Allow Host PID</label>
+      </div>
+
+      <div class="toggle">
+        <input type="checkbox" id="hostIPC" onchange="generate()" />
+        <label for="hostIPC" style="margin:0;">Allow Host IPC</label>
+      </div>
+
+      <label for="runAsUser">Run As User</label>
+      <select id="runAsUser" onchange="generate()">
+        <option value="MustRunAsNonRoot">Must Run As Non-Root</option>
+        <option value="RunAsAny">Run As Any</option>
+        <option value="MustRunAs">Must Run As (specific UID)</option>
+      </select>
+
+      <label for="fsGroup">FS Group</label>
+      <select id="fsGroup" onchange="generate()">
+        <option value="MustRunAs">Must Run As (specific GID)</option>
+        <option value="RunAsAny">Run As Any</option>
+      </select>
+
+      <label for="volumes">Allowed Volume Types (comma-separated)</label>
+      <input id="volumes" type="text" placeholder="configMap,secret,emptyDir" value="configMap,secret,emptyDir,persistentVolumeClaim" onchange="generate()" />
+    </section>
+
+    <section class="card">
+      <h2>Security Context</h2>
+
+      <div class="toggle">
+        <input type="checkbox" id="readOnlyRoot" checked onchange="generate()" />
+        <label for="readOnlyRoot" style="margin:0;">Read-Only Root Filesystem</label>
+      </div>
+
+      <div class="toggle">
+        <input type="checkbox" id="allowPrivEscalation" onchange="generate()" />
+        <label for="allowPrivEscalation" style="margin:0;">Allow Privilege Escalation</label>
+      </div>
+
+      <label for="capabilities">Required Dropped Capabilities</label>
+      <input id="capabilities" type="text" placeholder="ALL" value="ALL" onchange="generate()" />
+
+      <label for="seLinux">SE Linux</label>
+      <select id="seLinux" onchange="generate()">
+        <option value="RunAsAny">Run As Any</option>
+        <option value="MustRunAs">Must Run As</option>
+      </select>
+
+      <label for="seccomp">Seccomp Profile</label>
+      <select id="seccomp" onchange="generate()">
+        <option value="RuntimeDefault">Runtime Default</option>
+        <option value="Localhost">Localhost</option>
+        <option value="Unconfined">Unconfined</option>
+      </select>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <h2>Generated Pod Security Policy YAML</h2>
+      <pre id="output"># Configure your policy and see the YAML here</pre>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <button onclick="copyOutput()">📋 Copy YAML</button>
+        <button class="secondary" onclick="downloadOutput()">💾 Download Policy</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const presets = {
+      baseline: {
+        privileged: false,
+        hostNetwork: false,
+        hostPID: false,
+        hostIPC: false,
+        runAsUser: 'RunAsAny',
+        fsGroup: 'RunAsAny',
+        volumes: 'configMap,secret,emptyDir,persistentVolumeClaim',
+        readOnlyRoot: false,
+        allowPrivEscalation: true,
+        capabilities: 'NET_RAW',
+        seLinux: 'RunAsAny',
+        seccomp: 'RuntimeDefault'
+      },
+      restricted: {
+        privileged: false,
+        hostNetwork: false,
+        hostPID: false,
+        hostIPC: false,
+        runAsUser: 'MustRunAsNonRoot',
+        fsGroup: 'MustRunAs',
+        volumes: 'configMap,secret,emptyDir,persistentVolumeClaim',
+        readOnlyRoot: true,
+        allowPrivEscalation: false,
+        capabilities: 'ALL',
+        seLinux: 'RunAsAny',
+        seccomp: 'RuntimeDefault'
+      },
+      privileged: {
+        privileged: true,
+        hostNetwork: true,
+        hostPID: true,
+        hostIPC: true,
+        runAsUser: 'RunAsAny',
+        fsGroup: 'RunAsAny',
+        volumes: '*',
+        readOnlyRoot: false,
+        allowPrivEscalation: true,
+        capabilities: '',
+        seLinux: 'RunAsAny',
+        seccomp: 'Unconfined'
+      }
+    };
+
+    function loadPreset(type) {
+      if (type === 'custom') {
+        generate();
+        return;
+      }
+
+      const preset = presets[type];
+      document.getElementById('privileged').checked = preset.privileged;
+      document.getElementById('hostNetwork').checked = preset.hostNetwork;
+      document.getElementById('hostPID').checked = preset.hostPID;
+      document.getElementById('hostIPC').checked = preset.hostIPC;
+      document.getElementById('runAsUser').value = preset.runAsUser;
+      document.getElementById('fsGroup').value = preset.fsGroup;
+      document.getElementById('volumes').value = preset.volumes;
+      document.getElementById('readOnlyRoot').checked = preset.readOnlyRoot;
+      document.getElementById('allowPrivEscalation').checked = preset.allowPrivEscalation;
+      document.getElementById('capabilities').value = preset.capabilities;
+      document.getElementById('seLinux').value = preset.seLinux;
+      document.getElementById('seccomp').value = preset.seccomp;
+
+      generate();
+    }
+
+    function generate() {
+      const name = document.getElementById('policyName').value || 'restrictive-policy';
+      const privileged = document.getElementById('privileged').checked;
+      const hostNetwork = document.getElementById('hostNetwork').checked;
+      const hostPID = document.getElementById('hostPID').checked;
+      const hostIPC = document.getElementById('hostIPC').checked;
+      const runAsUser = document.getElementById('runAsUser').value;
+      const fsGroup = document.getElementById('fsGroup').value;
+      const volumes = document.getElementById('volumes').value;
+      const readOnlyRoot = document.getElementById('readOnlyRoot').checked;
+      const allowPrivEscalation = document.getElementById('allowPrivEscalation').checked;
+      const capabilities = document.getElementById('capabilities').value;
+      const seLinux = document.getElementById('seLinux').value;
+      const seccomp = document.getElementById('seccomp').value;
+
+      let yaml = `apiVersion: policy/v1beta1\nkind: PodSecurityPolicy\nmetadata:\n  name: ${name}\n  annotations:\n    seccomp.security.alpha.kubernetes.io/allowedProfileNames: '${seccomp}'\nspec:\n`;
+
+      yaml += `  privileged: ${privileged}\n`;
+      yaml += `  hostNetwork: ${hostNetwork}\n`;
+      yaml += `  hostPID: ${hostPID}\n`;
+      yaml += `  hostIPC: ${hostIPC}\n`;
+
+      yaml += `  runAsUser:\n    rule: ${runAsUser}\n`;
+      if (runAsUser === 'MustRunAs') {
+        yaml += `    ranges:\n      - min: 1000\n        max: 65535\n`;
+      }
+
+      yaml += `  fsGroup:\n    rule: ${fsGroup}\n`;
+      if (fsGroup === 'MustRunAs') {
+        yaml += `    ranges:\n      - min: 1000\n        max: 65535\n`;
+      }
+
+      yaml += `  seLinux:\n    rule: ${seLinux}\n`;
+
+      yaml += `  supplementalGroups:\n    rule: RunAsAny\n`;
+
+      const volumeList = volumes === '*' ? ['*'] : volumes.split(',').map(v => v.trim());
+      yaml += `  volumes:\n`;
+      volumeList.forEach(v => {
+        yaml += `    - ${v}\n`;
+      });
+
+      yaml += `  readOnlyRootFilesystem: ${readOnlyRoot}\n`;
+      yaml += `  allowPrivilegeEscalation: ${allowPrivEscalation}\n`;
+
+      if (capabilities) {
+        const caps = capabilities.split(',').map(c => c.trim());
+        yaml += `  requiredDropCapabilities:\n`;
+        caps.forEach(c => {
+          yaml += `    - ${c}\n`;
+        });
+      }
+
+      yaml += `\n# RBAC Configuration (apply separately)\n---\n`;
+      yaml += `apiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRole\nmetadata:\n  name: ${name}-role\nrules:\n`;
+      yaml += `  - apiGroups: ['policy']\n    resources: ['podsecuritypolicies']\n    verbs: ['use']\n    resourceNames:\n      - ${name}\n`;
+
+      yaml += `\n---\n`;
+      yaml += `apiVersion: rbac.authorization.k8s.io/v1\nkind: ClusterRoleBinding\nmetadata:\n  name: ${name}-binding\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: ClusterRole\n  name: ${name}-role\nsubjects:\n  - kind: ServiceAccount\n    name: default\n    namespace: default\n`;
+
+      document.getElementById('output').textContent = yaml;
+    }
+
+    function copyOutput() {
+      const text = document.getElementById('output').textContent;
+      navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
+    }
+
+    function downloadOutput() {
+      const text = document.getElementById('output').textContent;
+      const name = document.getElementById('policyName').value || 'restrictive-policy';
+      const blob = new Blob([text], { type: 'text/yaml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${name}.yaml`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    loadPreset('restricted');
+  </script>
+</body>
+</html>

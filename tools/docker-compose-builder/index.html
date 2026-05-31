@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Docker Compose Builder</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0b1224; --panel:#111a2f; --text:#e5e7eb; --muted:#94a3b8; --accent:#3b82f6; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:radial-gradient(circle at 15% 20%,#1a2847,#0b1224 65%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); font-size:15px; }
+    .badge { padding:8px 14px; border:1px solid #1f2937; border-radius:10px; font-size:13px; font-weight:600; background:rgba(59,130,246,0.1); }
+    main { padding:24px 32px 48px; display:grid; grid-template-columns:repeat(auto-fit,minmax(380px,1fr)); gap:20px; max-width:1800px; margin:0 auto; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    input, select, textarea { width:100%; padding:12px 14px; border-radius:10px; border:1px solid #1f2937; background:#0b1224; color:var(--text); font-size:14px; font-family:inherit; transition:border-color 0.2s; }
+    input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent); }
+    textarea { resize:vertical; min-height:120px; font-family:'Fira Code',monospace; font-size:13px; }
+    button { margin-top:14px; width:100%; padding:13px 18px; border:none; border-radius:10px; background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; font-weight:700; font-size:15px; cursor:pointer; transition:transform 0.2s,box-shadow 0.2s; box-shadow:0 8px 24px rgba(59,130,246,0.3); }
+    button:hover { transform:translateY(-1px); box-shadow:0 12px 32px rgba(59,130,246,0.4); }
+    button:active { transform:translateY(0); }
+    button.secondary { background:linear-gradient(135deg,#6366f1,#4f46e5); box-shadow:0 8px 24px rgba(99,102,241,0.3); }
+    pre { background:#0a0f1e; border:1px solid #1f2937; border-radius:10px; padding:16px; white-space:pre-wrap; word-break:break-word; min-height:280px; max-height:500px; overflow-y:auto; font-family:'Fira Code',monospace; font-size:13px; line-height:1.6; }
+    .service-list { display:flex; flex-direction:column; gap:10px; margin-top:8px; }
+    .service-item { background:#0a0f1e; border:1px solid #1f2937; border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center; }
+    .service-item button { width:auto; margin:0; padding:6px 12px; font-size:13px; background:#dc2626; box-shadow:none; }
+    .add-section { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:end; }
+    .template-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; margin-top:8px; }
+    .template-btn { padding:10px; border:1px solid #1f2937; border-radius:8px; background:rgba(59,130,246,0.08); cursor:pointer; font-size:13px; text-align:center; transition:all 0.2s; }
+    .template-btn:hover { background:rgba(59,130,246,0.15); border-color:var(--accent); }
+    ::-webkit-scrollbar { width:8px; height:8px; }
+    ::-webkit-scrollbar-track { background:#0a0f1e; }
+    ::-webkit-scrollbar-thumb { background:#1f2937; border-radius:4px; }
+    ::-webkit-scrollbar-thumb:hover { background:#374151; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>🐳 Docker Compose Builder</h1>
+      <p class="subtitle">Visual composer for multi-container Docker applications with templates and validation</p>
+    </div>
+    <div class="badge">Offline • Production Ready</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Service Configuration</h2>
+
+      <label>Load Template</label>
+      <div class="template-grid">
+        <div class="template-btn" onclick="loadTemplate('lamp')">LAMP Stack</div>
+        <div class="template-btn" onclick="loadTemplate('mean')">MEAN Stack</div>
+        <div class="template-btn" onclick="loadTemplate('wordpress')">WordPress</div>
+        <div class="template-btn" onclick="loadTemplate('monitoring')">Monitoring</div>
+      </div>
+
+      <label for="serviceName">Service Name</label>
+      <input id="serviceName" type="text" placeholder="e.g., web, api, database" />
+
+      <label for="serviceImage">Docker Image</label>
+      <input id="serviceImage" type="text" placeholder="e.g., nginx:latest, postgres:15" />
+
+      <label for="servicePorts">Ports (host:container)</label>
+      <input id="servicePorts" type="text" placeholder="e.g., 8080:80, 5432:5432" />
+
+      <label for="serviceEnv">Environment Variables</label>
+      <textarea id="serviceEnv" placeholder="KEY=value&#10;ANOTHER_KEY=another_value"></textarea>
+
+      <label for="serviceVolumes">Volumes</label>
+      <input id="serviceVolumes" type="text" placeholder="e.g., ./data:/var/lib/data" />
+
+      <label for="serviceDependsOn">Depends On (comma-separated)</label>
+      <input id="serviceDependsOn" type="text" placeholder="e.g., database, redis" />
+
+      <button onclick="addService()">Add Service</button>
+
+      <div style="margin-top:20px;">
+        <label>Services Added</label>
+        <div class="service-list" id="serviceList"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Generated docker-compose.yml</h2>
+      <pre id="output">version: '3.8'
+
+services:
+  # Add services using the form ←</pre>
+      <button class="secondary" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+      <button class="secondary" onclick="downloadFile()">💾 Download File</button>
+      <button class="secondary" onclick="validateCompose()">✓ Validate Syntax</button>
+    </section>
+
+    <section class="card">
+      <h2>Validation & Analysis</h2>
+      <pre id="validation">No issues detected yet.
+
+Tips:
+• Use specific image tags (avoid :latest)
+• Define restart policies for production
+• Set resource limits (mem_limit, cpus)
+• Use named volumes for persistence
+• Configure health checks for services</pre>
+    </section>
+  </main>
+
+  <script>
+    let services = {};
+
+    const templates = {
+      lamp: [
+        {name: 'web', image: 'php:8.2-apache', ports: '8080:80', volumes: './html:/var/www/html', dependsOn: 'db'},
+        {name: 'db', image: 'mysql:8.0', env: 'MYSQL_ROOT_PASSWORD=secret\nMYSQL_DATABASE=myapp', volumes: 'db_data:/var/lib/mysql'}
+      ],
+      mean: [
+        {name: 'mongodb', image: 'mongo:7', ports: '27017:27017', volumes: 'mongo_data:/data/db'},
+        {name: 'api', image: 'node:20-alpine', ports: '3000:3000', dependsOn: 'mongodb'},
+        {name: 'web', image: 'nginx:alpine', ports: '8080:80', dependsOn: 'api'}
+      ],
+      wordpress: [
+        {name: 'wordpress', image: 'wordpress:latest', ports: '8080:80', env: 'WORDPRESS_DB_HOST=db\nWORDPRESS_DB_USER=wordpress\nWORDPRESS_DB_PASSWORD=secret\nWORDPRESS_DB_NAME=wordpress', dependsOn: 'db'},
+        {name: 'db', image: 'mysql:8.0', env: 'MYSQL_ROOT_PASSWORD=secret\nMYSQL_DATABASE=wordpress\nMYSQL_USER=wordpress\nMYSQL_PASSWORD=secret', volumes: 'db_data:/var/lib/mysql'}
+      ],
+      monitoring: [
+        {name: 'prometheus', image: 'prom/prometheus:latest', ports: '9090:9090', volumes: './prometheus.yml:/etc/prometheus/prometheus.yml'},
+        {name: 'grafana', image: 'grafana/grafana:latest', ports: '3000:3000', dependsOn: 'prometheus'},
+        {name: 'node-exporter', image: 'prom/node-exporter:latest', ports: '9100:9100'}
+      ]
+    };
+
+    function loadTemplate(templateName) {
+      services = {};
+      const template = templates[templateName];
+      template.forEach(svc => {
+        const name = svc.name;
+        services[name] = {
+          image: svc.image,
+          ports: svc.ports ? [svc.ports] : [],
+          environment: svc.env ? svc.env.split('\n').reduce((acc, line) => {
+            const [k, v] = line.split('=');
+            if (k && v) acc[k.trim()] = v.trim();
+            return acc;
+          }, {}) : {},
+          volumes: svc.volumes ? [svc.volumes] : [],
+          depends_on: svc.dependsOn ? svc.dependsOn.split(',').map(d => d.trim()) : []
+        };
+      });
+      render();
+    }
+
+    function addService() {
+      const name = document.getElementById('serviceName').value.trim();
+      const image = document.getElementById('serviceImage').value.trim();
+      const ports = document.getElementById('servicePorts').value.trim();
+      const envText = document.getElementById('serviceEnv').value.trim();
+      const volumes = document.getElementById('serviceVolumes').value.trim();
+      const dependsOn = document.getElementById('serviceDependsOn').value.trim();
+
+      if (!name || !image) {
+        alert('Service name and image are required');
+        return;
+      }
+
+      const service = { image };
+
+      if (ports) service.ports = ports.split(',').map(p => p.trim());
+
+      if (envText) {
+        service.environment = envText.split('\n').reduce((acc, line) => {
+          const [k, v] = line.split('=');
+          if (k && v) acc[k.trim()] = v.trim();
+          return acc;
+        }, {});
+      }
+
+      if (volumes) service.volumes = volumes.split(',').map(v => v.trim());
+
+      if (dependsOn) service.depends_on = dependsOn.split(',').map(d => d.trim());
+
+      services[name] = service;
+
+      document.getElementById('serviceName').value = '';
+      document.getElementById('serviceImage').value = '';
+      document.getElementById('servicePorts').value = '';
+      document.getElementById('serviceEnv').value = '';
+      document.getElementById('serviceVolumes').value = '';
+      document.getElementById('serviceDependsOn').value = '';
+
+      render();
+    }
+
+    function removeService(name) {
+      delete services[name];
+      render();
+    }
+
+    function render() {
+      const serviceListEl = document.getElementById('serviceList');
+      serviceListEl.innerHTML = Object.keys(services).map(name =>
+        `<div class="service-item">
+          <span><strong>${name}</strong> (${services[name].image})</span>
+          <button onclick="removeService('${name}')">Remove</button>
+        </div>`
+      ).join('') || '<div style="color:var(--muted);padding:12px;">No services added yet</div>';
+
+      const yaml = generateYAML();
+      document.getElementById('output').textContent = yaml;
+      validateOutput(yaml);
+    }
+
+    function generateYAML() {
+      if (Object.keys(services).length === 0) {
+        return "version: '3.8'\n\nservices:\n  # Add services using the form ←";
+      }
+
+      let yaml = "version: '3.8'\n\nservices:\n";
+
+      Object.entries(services).forEach(([name, config]) => {
+        yaml += `  ${name}:\n`;
+        yaml += `    image: ${config.image}\n`;
+
+        if (config.ports && config.ports.length) {
+          yaml += `    ports:\n`;
+          config.ports.forEach(p => yaml += `      - "${p}"\n`);
+        }
+
+        if (config.environment && Object.keys(config.environment).length) {
+          yaml += `    environment:\n`;
+          Object.entries(config.environment).forEach(([k, v]) => {
+            yaml += `      ${k}: ${v}\n`;
+          });
+        }
+
+        if (config.volumes && config.volumes.length) {
+          yaml += `    volumes:\n`;
+          config.volumes.forEach(v => yaml += `      - ${v}\n`);
+        }
+
+        if (config.depends_on && config.depends_on.length) {
+          yaml += `    depends_on:\n`;
+          config.depends_on.forEach(d => yaml += `      - ${d}\n`);
+        }
+
+        yaml += '\n';
+      });
+
+      const volumeNames = Object.values(services)
+        .flatMap(s => s.volumes || [])
+        .filter(v => !v.includes('./') && !v.includes('/'))
+        .map(v => v.split(':')[0]);
+
+      if (volumeNames.length) {
+        yaml += 'volumes:\n';
+        [...new Set(volumeNames)].forEach(v => yaml += `  ${v}:\n`);
+      }
+
+      return yaml;
+    }
+
+    function validateOutput(yaml) {
+      const issues = [];
+      const warnings = [];
+
+      Object.entries(services).forEach(([name, config]) => {
+        if (config.image.endsWith(':latest')) {
+          warnings.push(`⚠️ Service "${name}" uses :latest tag (not recommended for production)`);
+        }
+
+        if (!config.ports || config.ports.length === 0) {
+          warnings.push(`ℹ️ Service "${name}" has no exposed ports`);
+        }
+
+        if (config.depends_on) {
+          config.depends_on.forEach(dep => {
+            if (!services[dep]) {
+              issues.push(`❌ Service "${name}" depends on "${dep}" which doesn't exist`);
+            }
+          });
+        }
+      });
+
+      let output = issues.length === 0 ? '✅ No critical issues detected\n\n' : issues.join('\n') + '\n\n';
+      output += warnings.length ? warnings.join('\n') + '\n\n' : '';
+      output += 'Production Checklist:\n';
+      output += '• Add restart policies (restart: unless-stopped)\n';
+      output += '• Set resource limits (mem_limit, cpus)\n';
+      output += '• Configure health checks\n';
+      output += '• Use secrets for sensitive data\n';
+      output += '• Define networks for isolation';
+
+      document.getElementById('validation').textContent = output;
+    }
+
+    function copyToClipboard() {
+      const text = document.getElementById('output').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard!');
+      });
+    }
+
+    function downloadFile() {
+      const text = document.getElementById('output').textContent;
+      const blob = new Blob([text], { type: 'text/yaml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'docker-compose.yml';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function validateCompose() {
+      const yaml = document.getElementById('output').textContent;
+      validateOutput(yaml);
+      alert('Validation complete! Check the Validation & Analysis panel for details.');
+    }
+
+    render();
+  </script>
+</body>
+</html>

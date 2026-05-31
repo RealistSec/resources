@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTTP Request Builder</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0a1017; --panel:#101820; --text:#e5e7eb; --muted:#94a3b8; --accent:#06b6d4; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:radial-gradient(circle at 18% 25%,#1a3a4f,#0a1017 70%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); }
+    main { padding:24px 32px 48px; max-width:1800px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    input, textarea, select { width:100%; padding:12px; border-radius:10px; border:1px solid #1f2937; background:#0a1017; color:var(--text); font-size:14px; font-family:inherit; }
+    textarea { min-height:120px; font-family:'Fira Code',monospace; font-size:13px; resize:vertical; }
+    select { cursor:pointer; }
+    button { margin-top:14px; width:100%; padding:13px; border:none; border-radius:10px; background:linear-gradient(135deg,#06b6d4,#0891b2); color:#000; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(6,182,212,0.3); }
+    button:hover { transform:translateY(-1px); }
+    button.secondary { background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; box-shadow:0 8px 24px rgba(99,102,241,0.3); }
+    pre { background:#0a1017; border:1px solid #1f2937; border-radius:10px; padding:16px; min-height:200px; max-height:500px; overflow-y:auto; font-family:'Fira Code',monospace; font-size:13px; line-height:1.6; white-space:pre-wrap; word-break:break-all; }
+    .method-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px; }
+    .method-btn { padding:10px; border:1px solid #1f2937; border-radius:8px; background:rgba(6,182,212,0.08); cursor:pointer; font-weight:600; text-align:center; transition:all 0.2s; }
+    .method-btn:hover, .method-btn.active { background:rgba(6,182,212,0.2); border-color:var(--accent); color:var(--accent); }
+    .header-item, .param-item { background:#0a1017; border:1px solid #1f2937; border-radius:8px; padding:10px; margin:8px 0; display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; }
+    .header-item input, .param-item input { padding:8px; font-size:13px; }
+    .header-item button, .param-item button { padding:6px 12px; font-size:12px; margin:0; width:auto; background:#dc2626; }
+    .add-btn { background:transparent; border:1px solid var(--accent); color:var(--accent); }
+    .add-btn:hover { background:rgba(6,182,212,0.1); }
+    .tabs { display:flex; gap:8px; margin-bottom:16px; border-bottom:1px solid #1f2937; }
+    .tab { padding:10px 16px; cursor:pointer; border-bottom:2px solid transparent; font-weight:600; color:var(--muted); }
+    .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌐 HTTP Request Builder</h1>
+    <p class="subtitle">Build and test HTTP requests with full control over methods, headers, and body</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Request Configuration</h2>
+
+      <label>Method</label>
+      <div class="method-grid">
+        <div class="method-btn active" onclick="setMethod('GET')">GET</div>
+        <div class="method-btn" onclick="setMethod('POST')">POST</div>
+        <div class="method-btn" onclick="setMethod('PUT')">PUT</div>
+        <div class="method-btn" onclick="setMethod('DELETE')">DELETE</div>
+        <div class="method-btn" onclick="setMethod('PATCH')">PATCH</div>
+        <div class="method-btn" onclick="setMethod('HEAD')">HEAD</div>
+        <div class="method-btn" onclick="setMethod('OPTIONS')">OPTIONS</div>
+        <div class="method-btn" onclick="setMethod('TRACE')">TRACE</div>
+      </div>
+
+      <label for="url">URL</label>
+      <input id="url" type="text" placeholder="https://api.example.com/users" value="https://jsonplaceholder.typicode.com/posts/1" />
+
+      <label>Query Parameters</label>
+      <div id="paramsList"></div>
+      <button class="add-btn secondary" onclick="addParam()">+ Add Parameter</button>
+
+      <label>Headers</label>
+      <div id="headersList"></div>
+      <button class="add-btn secondary" onclick="addHeader()">+ Add Header</button>
+    </section>
+
+    <section class="card">
+      <div class="tabs">
+        <div class="tab active" onclick="switchBodyTab('none')">None</div>
+        <div class="tab" onclick="switchBodyTab('json')">JSON</div>
+        <div class="tab" onclick="switchBodyTab('form')">Form Data</div>
+        <div class="tab" onclick="switchBodyTab('raw')">Raw</div>
+      </div>
+
+      <div id="bodyNone">
+        <p style="color:var(--muted);">No request body</p>
+      </div>
+
+      <div id="bodyJson" style="display:none;">
+        <label for="jsonBody">JSON Body</label>
+        <textarea id="jsonBody" placeholder='{\n  "key": "value"\n}'></textarea>
+        <button class="secondary" onclick="formatJSON()">Format JSON</button>
+      </div>
+
+      <div id="bodyForm" style="display:none;">
+        <label>Form Fields</label>
+        <div id="formFields"></div>
+        <button class="add-btn secondary" onclick="addFormField()">+ Add Field</button>
+      </div>
+
+      <div id="bodyRaw" style="display:none;">
+        <label for="rawBody">Raw Body</label>
+        <textarea id="rawBody" placeholder="Raw request body..."></textarea>
+      </div>
+
+      <button onclick="buildRequest()" style="margin-top:20px;">Build Request</button>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <h2>Generated Request</h2>
+      <div class="tabs">
+        <div class="tab active" onclick="switchOutputTab('curl')">cURL</div>
+        <div class="tab" onclick="switchOutputTab('fetch')">JavaScript Fetch</div>
+        <div class="tab" onclick="switchOutputTab('python')">Python Requests</div>
+        <div class="tab" onclick="switchOutputTab('raw')">Raw HTTP</div>
+      </div>
+      <pre id="output"># Build a request to see the generated code</pre>
+      <button class="secondary" onclick="copyOutput()">📋 Copy to Clipboard</button>
+    </section>
+  </main>
+
+  <script>
+    let config = {
+      method: 'GET',
+      url: 'https://jsonplaceholder.typicode.com/posts/1',
+      params: [],
+      headers: [],
+      bodyType: 'none',
+      body: ''
+    };
+
+    let currentOutputTab = 'curl';
+
+    function setMethod(method) {
+      config.method = method;
+      document.querySelectorAll('.method-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent === method);
+      });
+
+      // Show/hide body tabs for GET/HEAD/DELETE
+      const noBodyMethods = ['GET', 'HEAD', 'DELETE', 'OPTIONS', 'TRACE'];
+      if (noBodyMethods.includes(method) && config.bodyType !== 'none') {
+        switchBodyTab('none');
+      }
+    }
+
+    function addParam() {
+      const id = Date.now();
+      config.params.push({ id, key: '', value: '' });
+      renderParams();
+    }
+
+    function removeParam(id) {
+      config.params = config.params.filter(p => p.id !== id);
+      renderParams();
+    }
+
+    function renderParams() {
+      if (config.params.length === 0) {
+        document.getElementById('paramsList').innerHTML = '<p style="color:var(--muted);font-size:13px;">No parameters</p>';
+        return;
+      }
+      document.getElementById('paramsList').innerHTML = config.params.map(p =>
+        `<div class="param-item">
+          <input placeholder="key" value="${p.key}" onchange="updateParam(${p.id}, 'key', this.value)" />
+          <input placeholder="value" value="${p.value}" onchange="updateParam(${p.id}, 'value', this.value)" />
+          <button onclick="removeParam(${p.id})">✕</button>
+        </div>`
+      ).join('');
+    }
+
+    function updateParam(id, field, value) {
+      const param = config.params.find(p => p.id === id);
+      if (param) param[field] = value;
+    }
+
+    function addHeader() {
+      const id = Date.now();
+      config.headers.push({ id, key: '', value: '' });
+      renderHeaders();
+    }
+
+    function removeHeader(id) {
+      config.headers = config.headers.filter(h => h.id !== id);
+      renderHeaders();
+    }
+
+    function renderHeaders() {
+      if (config.headers.length === 0) {
+        document.getElementById('headersList').innerHTML = '<p style="color:var(--muted);font-size:13px;">No custom headers</p>';
+        return;
+      }
+      document.getElementById('headersList').innerHTML = config.headers.map(h =>
+        `<div class="header-item">
+          <input placeholder="Header-Name" value="${h.key}" onchange="updateHeader(${h.id}, 'key', this.value)" />
+          <input placeholder="value" value="${h.value}" onchange="updateHeader(${h.id}, 'value', this.value)" />
+          <button onclick="removeHeader(${h.id})">✕</button>
+        </div>`
+      ).join('');
+    }
+
+    function updateHeader(id, field, value) {
+      const header = config.headers.find(h => h.id === id);
+      if (header) header[field] = value;
+    }
+
+    function addFormField() {
+      const id = Date.now();
+      if (!config.formFields) config.formFields = [];
+      config.formFields.push({ id, key: '', value: '' });
+      renderFormFields();
+    }
+
+    function removeFormField(id) {
+      config.formFields = config.formFields.filter(f => f.id !== id);
+      renderFormFields();
+    }
+
+    function renderFormFields() {
+      if (!config.formFields || config.formFields.length === 0) {
+        document.getElementById('formFields').innerHTML = '<p style="color:var(--muted);font-size:13px;">No form fields</p>';
+        return;
+      }
+      document.getElementById('formFields').innerHTML = config.formFields.map(f =>
+        `<div class="header-item">
+          <input placeholder="field name" value="${f.key}" onchange="updateFormField(${f.id}, 'key', this.value)" />
+          <input placeholder="value" value="${f.value}" onchange="updateFormField(${f.id}, 'value', this.value)" />
+          <button onclick="removeFormField(${f.id})">✕</button>
+        </div>`
+      ).join('');
+    }
+
+    function updateFormField(id, field, value) {
+      const formField = config.formFields.find(f => f.id === id);
+      if (formField) formField[field] = value;
+    }
+
+    function switchBodyTab(type) {
+      config.bodyType = type;
+      document.querySelectorAll('#bodyNone, #bodyJson, #bodyForm, #bodyRaw').forEach(el => el.style.display = 'none');
+      document.getElementById(`body${type.charAt(0).toUpperCase() + type.slice(1)}`).style.display = 'block';
+
+      document.querySelectorAll('.tabs .tab').forEach(tab => {
+        tab.classList.toggle('active', tab.textContent.toLowerCase() === type);
+      });
+    }
+
+    function switchOutputTab(tab) {
+      currentOutputTab = tab;
+      document.querySelectorAll('.card:last-child .tabs .tab').forEach(t => {
+        t.classList.toggle('active', t.textContent.toLowerCase().includes(tab));
+      });
+      buildRequest();
+    }
+
+    function formatJSON() {
+      try {
+        const json = JSON.parse(document.getElementById('jsonBody').value);
+        document.getElementById('jsonBody').value = JSON.stringify(json, null, 2);
+      } catch (e) {
+        alert('Invalid JSON: ' + e.message);
+      }
+    }
+
+    function buildRequest() {
+      config.url = document.getElementById('url').value;
+
+      let url = config.url;
+      if (config.params.length > 0) {
+        const params = config.params.filter(p => p.key).map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
+        url += (url.includes('?') ? '&' : '?') + params;
+      }
+
+      let body = '';
+      if (config.bodyType === 'json') {
+        body = document.getElementById('jsonBody').value;
+      } else if (config.bodyType === 'form') {
+        const formData = config.formFields?.filter(f => f.key).map(f => `${encodeURIComponent(f.key)}=${encodeURIComponent(f.value)}`).join('&');
+        body = formData;
+      } else if (config.bodyType === 'raw') {
+        body = document.getElementById('rawBody').value;
+      }
+
+      let output = '';
+
+      if (currentOutputTab === 'curl') {
+        output = `curl -X ${config.method} '${url}'`;
+        config.headers.filter(h => h.key).forEach(h => {
+          output += ` \\\n  -H '${h.key}: ${h.value}'`;
+        });
+        if (config.bodyType === 'json' && body) {
+          output += ` \\\n  -H 'Content-Type: application/json'`;
+          output += ` \\\n  -d '${body.replace(/'/g, "\\'")}'`;
+        } else if (config.bodyType === 'form' && body) {
+          output += ` \\\n  -H 'Content-Type: application/x-www-form-urlencoded'`;
+          output += ` \\\n  -d '${body}'`;
+        } else if (config.bodyType === 'raw' && body) {
+          output += ` \\\n  -d '${body.replace(/'/g, "\\'")}'`;
+        }
+      } else if (currentOutputTab === 'fetch') {
+        output = `fetch('${url}', {\n  method: '${config.method}'`;
+        if (config.headers.length > 0 || (config.bodyType === 'json' && body)) {
+          output += `,\n  headers: {\n`;
+          if (config.bodyType === 'json' && body) {
+            output += `    'Content-Type': 'application/json'`;
+            if (config.headers.filter(h => h.key).length > 0) output += ',';
+            output += '\n';
+          }
+          config.headers.filter(h => h.key).forEach((h, i) => {
+            output += `    '${h.key}': '${h.value}'`;
+            if (i < config.headers.filter(h => h.key).length - 1) output += ',';
+            output += '\n';
+          });
+          output += `  }`;
+        }
+        if (body) {
+          const bodyContent = config.bodyType === 'json' ? body : `'${body}'`;
+          output += `,\n  body: ${bodyContent}`;
+        }
+        output += `\n})\n  .then(res => res.json())\n  .then(data => console.log(data))\n  .catch(err => console.error(err));`;
+      } else if (currentOutputTab === 'python') {
+        output = `import requests\n\n`;
+        if (config.headers.filter(h => h.key).length > 0) {
+          output += `headers = {\n`;
+          config.headers.filter(h => h.key).forEach(h => {
+            output += `    '${h.key}': '${h.value}',\n`;
+          });
+          output += `}\n\n`;
+        }
+        if (body) {
+          if (config.bodyType === 'json') {
+            output += `data = ${body}\n\n`;
+          } else {
+            output += `data = '${body}'\n\n`;
+          }
+        }
+        output += `response = requests.${config.method.toLowerCase()}(\n    '${url}'`;
+        if (config.headers.filter(h => h.key).length > 0) {
+          output += `,\n    headers=headers`;
+        }
+        if (body) {
+          output += `,\n    ${config.bodyType === 'json' ? 'json' : 'data'}=data`;
+        }
+        output += `\n)\n\nprint(response.json())`;
+      } else if (currentOutputTab === 'raw') {
+        const urlObj = new URL(url);
+        output = `${config.method} ${urlObj.pathname}${urlObj.search} HTTP/1.1\n`;
+        output += `Host: ${urlObj.host}\n`;
+        config.headers.filter(h => h.key).forEach(h => {
+          output += `${h.key}: ${h.value}\n`;
+        });
+        if (config.bodyType === 'json' && body) {
+          output += `Content-Type: application/json\n`;
+          output += `Content-Length: ${body.length}\n`;
+        } else if (config.bodyType === 'form' && body) {
+          output += `Content-Type: application/x-www-form-urlencoded\n`;
+          output += `Content-Length: ${body.length}\n`;
+        }
+        output += `\n`;
+        if (body) {
+          output += body;
+        }
+      }
+
+      document.getElementById('output').textContent = output;
+    }
+
+    function copyOutput() {
+      const text = document.getElementById('output').textContent;
+      navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
+    }
+
+    renderParams();
+    renderHeaders();
+    buildRequest();
+  </script>
+</body>
+</html>

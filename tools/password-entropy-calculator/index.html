@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Entropy Calculator</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#1a0a2e; --panel:#2a1a4e; --text:#e5e7eb; --muted:#94a3b8; --accent:#a855f7; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:radial-gradient(circle at 20% 30%,#3d2a5f,#1a0a2e 70%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); }
+    main { padding:24px 32px 48px; max-width:1400px; margin:0 auto; display:grid; grid-template-columns:repeat(auto-fit,minmax(450px,1fr)); gap:20px; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    input[type="text"], input[type="password"] { width:100%; padding:14px; border-radius:10px; border:1px solid #1f2937; background:#1a0a2e; color:var(--text); font-size:16px; font-family:'Fira Code',monospace; }
+    .toggle { display:flex; align-items:center; gap:8px; margin:12px 0; }
+    input[type="checkbox"] { width:20px; height:20px; cursor:pointer; }
+    .strength { text-align:center; padding:24px; border-radius:12px; margin:16px 0; }
+    .strength-score { font-size:48px; font-weight:800; margin-bottom:12px; }
+    .strength-label { font-size:20px; font-weight:700; }
+    .meter { height:12px; background:#1a0a2e; border-radius:6px; overflow:hidden; margin:20px 0; }
+    .meter-fill { height:100%; transition:all 0.3s; border-radius:6px; }
+    .stat { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #1f2937; }
+    .stat:last-child { border-bottom:none; }
+    .stat-label { color:var(--muted); font-weight:600; }
+    .stat-value { font-family:'Fira Code',monospace; font-weight:700; }
+    .tip { background:#1a0a2e; border:1px solid #1f2937; border-radius:8px; padding:14px; margin:12px 0; font-size:14px; line-height:1.6; }
+    .generator { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:end; }
+    button { padding:13px 24px; border:none; border-radius:10px; background:linear-gradient(135deg,#a855f7,#9333ea); color:#fff; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(168,85,247,0.3); }
+    button:hover { transform:translateY(-1px); }
+    .pattern { background:#1a0a2e; border:1px solid #1f2937; border-radius:8px; padding:12px; margin:8px 0; }
+    .pattern-name { font-weight:700; color:var(--accent); margin-bottom:6px; }
+    .pattern-example { font-family:'Fira Code',monospace; font-size:13px; color:var(--muted); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🔐 Password Entropy Calculator</h1>
+    <p class="subtitle">Analyze password strength with entropy calculation, pattern detection, and cracking time estimates</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Password Analysis</h2>
+
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="Enter password to analyze" oninput="analyze()" />
+
+      <div class="toggle">
+        <input type="checkbox" id="showPassword" onchange="togglePassword()" />
+        <label for="showPassword" style="margin:0;cursor:pointer;">Show password</label>
+      </div>
+
+      <div class="strength" id="strength">
+        <div class="strength-score">-</div>
+        <div class="strength-label">Enter a password</div>
+      </div>
+
+      <div class="meter">
+        <div class="meter-fill" id="meter"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Statistics</h2>
+      <div id="stats"></div>
+    </section>
+
+    <section class="card">
+      <h2>Password Generator</h2>
+
+      <div class="toggle">
+        <input type="checkbox" id="genUppercase" checked />
+        <label for="genUppercase" style="margin:0;">Uppercase (A-Z)</label>
+      </div>
+      <div class="toggle">
+        <input type="checkbox" id="genLowercase" checked />
+        <label for="genLowercase" style="margin:0;">Lowercase (a-z)</label>
+      </div>
+      <div class="toggle">
+        <input type="checkbox" id="genNumbers" checked />
+        <label for="genNumbers" style="margin:0;">Numbers (0-9)</label>
+      </div>
+      <div class="toggle">
+        <input type="checkbox" id="genSymbols" checked />
+        <label for="genSymbols" style="margin:0;">Symbols (!@#$%...)</label>
+      </div>
+
+      <label for="genLength">Length: <span id="lengthValue">16</span></label>
+      <input type="range" id="genLength" min="8" max="64" value="16" style="width:100%;" oninput="document.getElementById('lengthValue').textContent = this.value" />
+
+      <button onclick="generatePassword()" style="width:100%;margin-top:14px;">Generate Secure Password</button>
+    </section>
+
+    <section class="card">
+      <h2>Common Patterns Detected</h2>
+      <div id="patterns"></div>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <h2>Best Practices</h2>
+      <div class="tip">
+        <strong>✓ Do:</strong>
+        <ul style="margin:8px 0 0;padding-left:20px;">
+          <li>Use at least 12 characters (16+ recommended)</li>
+          <li>Include uppercase, lowercase, numbers, and symbols</li>
+          <li>Use unique passwords for each account</li>
+          <li>Consider using a password manager</li>
+          <li>Use passphrases (e.g., "correct-horse-battery-staple")</li>
+        </ul>
+      </div>
+      <div class="tip">
+        <strong>✗ Don't:</strong>
+        <ul style="margin:8px 0 0;padding-left:20px;">
+          <li>Use personal information (names, birthdates, etc.)</li>
+          <li>Use common words or patterns (password123, qwerty, etc.)</li>
+          <li>Reuse passwords across accounts</li>
+          <li>Share passwords or write them down insecurely</li>
+          <li>Use simple substitutions (P@ssw0rd)</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function togglePassword() {
+      const input = document.getElementById('password');
+      input.type = document.getElementById('showPassword').checked ? 'text' : 'password';
+    }
+
+    function analyze() {
+      const password = document.getElementById('password').value;
+
+      if (!password) {
+        document.getElementById('strength').innerHTML = `
+          <div class="strength-score">-</div>
+          <div class="strength-label">Enter a password</div>
+        `;
+        document.getElementById('meter').style.width = '0%';
+        document.getElementById('stats').innerHTML = '<p style="color:var(--muted);">No password entered</p>';
+        document.getElementById('patterns').innerHTML = '<p style="color:var(--muted);">No patterns detected</p>';
+        return;
+      }
+
+      // Calculate entropy
+      let poolSize = 0;
+      if (/[a-z]/.test(password)) poolSize += 26;
+      if (/[A-Z]/.test(password)) poolSize += 26;
+      if (/[0-9]/.test(password)) poolSize += 10;
+      if (/[^a-zA-Z0-9]/.test(password)) poolSize += 32;
+
+      const entropy = Math.log2(Math.pow(poolSize, password.length));
+      const score = Math.min(100, (entropy / 80) * 100);
+
+      // Detect patterns
+      const patterns = [];
+      if (/^[a-z]+$/.test(password)) patterns.push({ name: 'All lowercase', risk: 'Weak - very limited character space' });
+      if (/^[A-Z]+$/.test(password)) patterns.push({ name: 'All uppercase', risk: 'Weak - very limited character space' });
+      if (/^[0-9]+$/.test(password)) patterns.push({ name: 'All numbers', risk: 'Weak - easily guessed with PIN cracking' });
+      if (/123|234|345|456|567|678|789|890/.test(password)) patterns.push({ name: 'Sequential numbers', risk: 'Common pattern - easily guessed' });
+      if (/abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz/i.test(password)) patterns.push({ name: 'Sequential letters', risk: 'Common pattern - easily guessed' });
+      if (/(.)\1{2,}/.test(password)) patterns.push({ name: 'Repeated characters', risk: 'Reduces effective entropy' });
+      if (/^[a-z]+[0-9]+$/i.test(password)) patterns.push({ name: 'Letters followed by numbers', risk: 'Very common pattern (e.g., password123)' });
+      if (password.length < 8) patterns.push({ name: 'Too short', risk: 'Vulnerable to brute force attacks' });
+
+      const commonWords = ['password', 'admin', 'letmein', 'welcome', 'monkey', 'dragon', 'master', 'sunshine', 'princess', 'qwerty', 'abc123'];
+      commonWords.forEach(word => {
+        if (password.toLowerCase().includes(word)) {
+          patterns.push({ name: `Contains "${word}"`, risk: 'Common word in dictionary attacks' });
+        }
+      });
+
+      // Cracking time estimates
+      const combinations = Math.pow(poolSize, password.length);
+      const guessesPerSecond = 1e10; // 10 billion guesses/second (modern GPU)
+      const seconds = combinations / (2 * guessesPerSecond);
+
+      let crackTime = '';
+      if (seconds < 1) crackTime = 'Instant';
+      else if (seconds < 60) crackTime = `${Math.round(seconds)} seconds`;
+      else if (seconds < 3600) crackTime = `${Math.round(seconds / 60)} minutes`;
+      else if (seconds < 86400) crackTime = `${Math.round(seconds / 3600)} hours`;
+      else if (seconds < 31536000) crackTime = `${Math.round(seconds / 86400)} days`;
+      else if (seconds < 315360000) crackTime = `${Math.round(seconds / 31536000)} years`;
+      else if (seconds < 31536000000) crackTime = `${Math.round(seconds / 31536000)} years`;
+      else crackTime = `${(seconds / 31536000).toExponential(2)} years`;
+
+      // Strength assessment
+      let strengthClass = '';
+      let strengthLabel = '';
+      let color = '';
+
+      if (score < 30) {
+        strengthClass = 'weak';
+        strengthLabel = 'Very Weak';
+        color = '#ef4444';
+      } else if (score < 50) {
+        strengthClass = 'fair';
+        strengthLabel = 'Weak';
+        color = '#f97316';
+      } else if (score < 70) {
+        strengthClass = 'good';
+        strengthLabel = 'Fair';
+        color = '#f59e0b';
+      } else if (score < 85) {
+        strengthClass = 'strong';
+        strengthLabel = 'Good';
+        color = '#22c55e';
+      } else {
+        strengthClass = 'verystrong';
+        strengthLabel = 'Strong';
+        color = '#10b981';
+      }
+
+      document.getElementById('strength').innerHTML = `
+        <div class="strength-score" style="color:${color};">${Math.round(entropy)}</div>
+        <div class="strength-label" style="color:${color};">bits of entropy · ${strengthLabel}</div>
+      `;
+
+      const meter = document.getElementById('meter');
+      meter.style.width = `${score}%`;
+      meter.style.background = color;
+
+      document.getElementById('stats').innerHTML = `
+        <div class="stat">
+          <span class="stat-label">Length</span>
+          <span class="stat-value">${password.length} characters</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Character Pool</span>
+          <span class="stat-value">${poolSize} unique characters</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Entropy</span>
+          <span class="stat-value">${entropy.toFixed(2)} bits</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Possible Combinations</span>
+          <span class="stat-value">${combinations.toExponential(2)}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Time to Crack (GPU)</span>
+          <span class="stat-value" style="color:${color};">${crackTime}</span>
+        </div>
+      `;
+
+      if (patterns.length === 0) {
+        document.getElementById('patterns').innerHTML = '<p style="color:#22c55e;">✓ No obvious patterns detected</p>';
+      } else {
+        document.getElementById('patterns').innerHTML = patterns.map(p =>
+          `<div class="pattern">
+            <div class="pattern-name">⚠ ${p.name}</div>
+            <div class="pattern-example">${p.risk}</div>
+          </div>`
+        ).join('');
+      }
+    }
+
+    function generatePassword() {
+      const useUpper = document.getElementById('genUppercase').checked;
+      const useLower = document.getElementById('genLowercase').checked;
+      const useNumbers = document.getElementById('genNumbers').checked;
+      const useSymbols = document.getElementById('genSymbols').checked;
+      const length = parseInt(document.getElementById('genLength').value);
+
+      let charset = '';
+      if (useUpper) charset += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      if (useLower) charset += 'abcdefghijklmnopqrstuvwxyz';
+      if (useNumbers) charset += '0123456789';
+      if (useSymbols) charset += '!@#$%^&*()_+-=[]{}|;:,.<>?';
+
+      if (charset.length === 0) {
+        alert('Select at least one character type');
+        return;
+      }
+
+      let password = '';
+      const array = new Uint32Array(length);
+      crypto.getRandomValues(array);
+
+      for (let i = 0; i < length; i++) {
+        password += charset[array[i] % charset.length];
+      }
+
+      document.getElementById('password').value = password;
+      analyze();
+    }
+  </script>
+</body>
+</html>

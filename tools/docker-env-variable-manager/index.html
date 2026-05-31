@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Docker Environment Variable Manager</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0b1224; --panel:#111a2f; --text:#e5e7eb; --muted:#94a3b8; --accent:#10b981; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif; background:radial-gradient(circle at 10% 20%,#1a3a2e,#0b1224 60%); color:var(--text); min-height:100vh; }
+    header { padding:24px 32px 20px; border-bottom:1px solid #1f2937; }
+    h1 { margin:0; font-size:clamp(26px,4.5vw,36px); letter-spacing:-0.03em; font-weight:800; }
+    .subtitle { margin:8px 0 0; color:var(--muted); }
+    main { padding:24px 32px 48px; display:grid; grid-template-columns:repeat(auto-fit,minmax(400px,1fr)); gap:20px; max-width:1800px; margin:0 auto; }
+    .card { background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(0,0,0,0.3)); border:1px solid #1f2937; border-radius:16px; padding:20px; box-shadow:0 16px 48px rgba(0,0,0,0.4); }
+    .card h2 { margin:0 0 16px; font-size:20px; font-weight:700; }
+    label { display:block; margin:12px 0 8px; font-weight:600; color:var(--muted); font-size:14px; }
+    input, textarea, select { width:100%; padding:12px; border-radius:10px; border:1px solid #1f2937; background:#0b1224; color:var(--text); font-size:14px; font-family:inherit; }
+    textarea { min-height:180px; font-family:'Fira Code',monospace; font-size:13px; resize:vertical; }
+    button { margin-top:14px; width:100%; padding:13px; border:none; border-radius:10px; background:linear-gradient(135deg,#10b981,#059669); color:#fff; font-weight:700; cursor:pointer; box-shadow:0 8px 24px rgba(16,185,129,0.3); }
+    button:hover { transform:translateY(-1px); box-shadow:0 12px 32px rgba(16,185,129,0.4); }
+    button.secondary { background:linear-gradient(135deg,#6366f1,#4f46e5); box-shadow:0 8px 24px rgba(99,102,241,0.3); }
+    pre { background:#0a0f1e; border:1px solid #1f2937; border-radius:10px; padding:16px; min-height:200px; max-height:500px; overflow-y:auto; font-family:'Fira Code',monospace; font-size:13px; line-height:1.6; white-space:pre-wrap; }
+    .env-item { background:#0a0f1e; border:1px solid #1f2937; border-radius:8px; padding:12px; margin:8px 0; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    .env-item .name { font-weight:600; color:var(--accent); font-family:'Fira Code',monospace; }
+    .env-item .value { color:var(--muted); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+    .env-item button { width:auto; margin:0; padding:6px 12px; font-size:12px; }
+    .tabs { display:flex; gap:8px; margin-bottom:16px; border-bottom:1px solid #1f2937; }
+    .tab { padding:10px 16px; cursor:pointer; border-bottom:2px solid transparent; font-weight:600; color:var(--muted); transition:all 0.2s; }
+    .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+    .tab:hover { color:var(--text); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🐳 Docker Environment Variable Manager</h1>
+    <p class="subtitle">Manage, validate, and convert environment variables for Docker containers and compose files</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Add Variables</h2>
+
+      <label for="varName">Variable Name</label>
+      <input id="varName" type="text" placeholder="e.g., DATABASE_URL, API_KEY" />
+
+      <label for="varValue">Value</label>
+      <input id="varValue" type="text" placeholder="Variable value" />
+
+      <label for="varDesc">Description (optional)</label>
+      <input id="varDesc" type="text" placeholder="What this variable is for" />
+
+      <button onclick="addVar()">Add Variable</button>
+
+      <label style="margin-top:20px;">Or Import from Text</label>
+      <textarea id="bulkImport" placeholder="KEY1=value1&#10;KEY2=value2&#10;KEY3=value3"></textarea>
+      <button class="secondary" onclick="importBulk()">Import All</button>
+    </section>
+
+    <section class="card">
+      <h2>Variables</h2>
+      <div id="varList" style="min-height:100px;max-height:400px;overflow-y:auto;"></div>
+      <button class="secondary" onclick="clearAll()">Clear All</button>
+    </section>
+
+    <section class="card" style="grid-column:1/-1;">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('env')">ENV File</div>
+        <div class="tab" onclick="switchTab('docker')">Dockerfile</div>
+        <div class="tab" onclick="switchTab('compose')">Docker Compose</div>
+        <div class="tab" onclick="switchTab('shell')">Shell Export</div>
+        <div class="tab" onclick="switchTab('json')">JSON</div>
+      </div>
+
+      <pre id="output"># No variables added yet</pre>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+        <button class="secondary" onclick="copyOutput()">📋 Copy</button>
+        <button class="secondary" onclick="downloadOutput()">💾 Download</button>
+        <button class="secondary" onclick="validateVars()">✓ Validate</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let vars = {};
+    let currentTab = 'env';
+
+    function addVar() {
+      const name = document.getElementById('varName').value.trim();
+      const value = document.getElementById('varValue').value;
+      const desc = document.getElementById('varDesc').value.trim();
+
+      if (!name) {
+        alert('Variable name is required');
+        return;
+      }
+
+      if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) {
+        if (!confirm('Variable name should be uppercase with underscores. Continue anyway?')) {
+          return;
+        }
+      }
+
+      vars[name] = { value, desc };
+
+      document.getElementById('varName').value = '';
+      document.getElementById('varValue').value = '';
+      document.getElementById('varDesc').value = '';
+
+      render();
+    }
+
+    function importBulk() {
+      const text = document.getElementById('bulkImport').value.trim();
+      if (!text) return;
+
+      text.split('\n').forEach(line => {
+        line = line.trim();
+        if (!line || line.startsWith('#')) return;
+
+        const idx = line.indexOf('=');
+        if (idx > 0) {
+          const name = line.slice(0, idx).trim();
+          const value = line.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+          vars[name] = { value, desc: '' };
+        }
+      });
+
+      document.getElementById('bulkImport').value = '';
+      render();
+    }
+
+    function removeVar(name) {
+      delete vars[name];
+      render();
+    }
+
+    function clearAll() {
+      if (Object.keys(vars).length === 0) return;
+      if (confirm('Clear all variables?')) {
+        vars = {};
+        render();
+      }
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => {
+        const dataTab = t.getAttribute('data-tab');
+        const onClick = t.getAttribute('onclick') || '';
+        const matchesTab = dataTab === tab ||
+          onClick.includes(`switchTab('${tab}')`) ||
+          onClick.includes(`switchTab("${tab}")`);
+
+        t.classList.toggle('active', matchesTab);
+      });
+      render();
+    }
+
+    function render() {
+      // Render variable list
+      const listEl = document.getElementById('varList');
+      if (Object.keys(vars).length === 0) {
+        listEl.innerHTML = '<div style="color:var(--muted);padding:12px;">No variables added yet</div>';
+      } else {
+        listEl.innerHTML = Object.entries(vars).map(([name, data]) =>
+          `<div class="env-item">
+            <div style="flex:1;">
+              <div class="name">${name}</div>
+              ${data.desc ? `<div style="font-size:12px;color:var(--muted);margin-top:4px;">${data.desc}</div>` : ''}
+            </div>
+            <div class="value">${data.value}</div>
+            <button onclick="removeVar('${name}')">✕</button>
+          </div>`
+        ).join('');
+      }
+
+      // Render output based on current tab
+      let output = '';
+      const entries = Object.entries(vars);
+
+      if (entries.length === 0) {
+        output = '# No variables added yet';
+      } else {
+        switch (currentTab) {
+          case 'env':
+            output = entries.map(([k, v]) => {
+              let line = v.desc ? `# ${v.desc}\n` : '';
+              const needsQuotes = /[\s#]/.test(v.value);
+              line += `${k}=${needsQuotes ? `"${v.value}"` : v.value}`;
+              return line;
+            }).join('\n');
+            break;
+
+          case 'docker':
+            output = 'FROM node:20-alpine\n\n';
+            output += entries.map(([k, v]) => {
+              let line = v.desc ? `# ${v.desc}\n` : '';
+              line += `ENV ${k}="${v.value}"`;
+              return line;
+            }).join('\n');
+            break;
+
+          case 'compose':
+            output = 'services:\n  app:\n    image: your-image:latest\n    environment:\n';
+            output += entries.map(([k, v]) => {
+              let line = v.desc ? `      # ${v.desc}\n` : '';
+              line += `      ${k}: "${v.value}"`;
+              return line;
+            }).join('\n');
+            break;
+
+          case 'shell':
+            output = entries.map(([k, v]) => {
+              let line = v.desc ? `# ${v.desc}\n` : '';
+              line += `export ${k}="${v.value}"`;
+              return line;
+            }).join('\n');
+            break;
+
+          case 'json':
+            const obj = entries.reduce((acc, [k, v]) => {
+              acc[k] = v.value;
+              return acc;
+            }, {});
+            output = JSON.stringify(obj, null, 2);
+            break;
+        }
+      }
+
+      document.getElementById('output').textContent = output;
+    }
+
+    function copyOutput() {
+      const text = document.getElementById('output').textContent;
+      navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard!'));
+    }
+
+    function downloadOutput() {
+      const text = document.getElementById('output').textContent;
+      const ext = { env: '.env', docker: 'Dockerfile', compose: 'docker-compose.yml', shell: '.sh', json: '.json' };
+      const filename = { env: '.env', docker: 'Dockerfile', compose: 'docker-compose.yml', shell: 'env.sh', json: 'env.json' };
+
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename[currentTab];
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function validateVars() {
+      const issues = [];
+      const warnings = [];
+
+      Object.entries(vars).forEach(([name, data]) => {
+        if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) {
+          warnings.push(`"${name}" should be uppercase with underscores`);
+        }
+
+        if (!data.value) {
+          issues.push(`"${name}" has empty value`);
+        }
+
+        if (name.toLowerCase().includes('password') || name.toLowerCase().includes('secret') || name.toLowerCase().includes('key')) {
+          warnings.push(`"${name}" appears to be sensitive - use secrets management`);
+        }
+
+        if (data.value.length > 1000) {
+          warnings.push(`"${name}" value is very long (${data.value.length} chars)`);
+        }
+      });
+
+      let msg = '';
+      if (issues.length === 0 && warnings.length === 0) {
+        msg = '✅ All variables look good!\n\nRemember:\n• Use secrets management for sensitive data\n• Document all variables\n• Use .env.example files for templates';
+      } else {
+        if (issues.length > 0) {
+          msg += '❌ Issues:\n' + issues.map(i => `  • ${i}`).join('\n') + '\n\n';
+        }
+        if (warnings.length > 0) {
+          msg += '⚠️ Warnings:\n' + warnings.map(w => `  • ${w}`).join('\n');
+        }
+      }
+
+      alert(msg);
+    }
+
+    render();
+  </script>
+</body>
+</html>
